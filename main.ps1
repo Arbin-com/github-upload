@@ -31,7 +31,9 @@ function github-upload {
     {
         $userAndRepo = $userAndRepo + "-test"
     }
-    
+
+    $repoName =  $userAndRepo.Split("/")[1]
+
     git clone https://$token@github.com/$userAndRepo
     dir
 
@@ -39,7 +41,7 @@ function github-upload {
     npm update
 
     cd ../
-    cd ./$userAndRepo
+    cd ./$repoName
 
     git config --global user.email "test@arbin.com"
     git config --global user.name "arbin-test"
