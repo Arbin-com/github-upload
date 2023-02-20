@@ -35,7 +35,6 @@ function github-upload {
     $repoName =  $userAndRepo.Split("/")[1]
 
     git clone https://$token@github.com/$userAndRepo
-    dir
 
     cd ./github-upload
     npm update
