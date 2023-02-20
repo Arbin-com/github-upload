@@ -139,14 +139,13 @@ let mainTask = (async () => {
         if (Boolean(assetsePath)) {
             dataPath = path.join(assetsePath, dataName)
         }
-        let stream = fs.createReadStream(dataPath)
         return {
             owner: arrUserAndRepo[0],
             repo: arrUserAndRepo[1],
             release_id: id,
             contentLength: fs.statSync(dataPath).size,
-            file: stream,
-            name: dataName
+            data: fs.readFileSync(dataPath),
+            name: dataName,
         }
     };
 
