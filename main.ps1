@@ -33,6 +33,7 @@ function github-upload {
     }
     
     git clone https://$token@github.com/$userAndRepo
+    dir
 
     cd ./github-upload
     npm update
