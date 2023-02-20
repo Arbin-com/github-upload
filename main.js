@@ -1,6 +1,3 @@
-let a = 'java'
-let b = `hello ${a}script`
-
 const fs = require('fs');
 const { exec } = require("child_process");
 const { Octokit, App } = require("octokit");
@@ -42,31 +39,31 @@ const octokit = new Octokit({
 })
 
 
-const isUploadVersion = srcBranch.startsWith("refs/tags/".toLocaleLowerCase());
-const isMaster = srcBranch.startsWith("refs/heads/master".toLocaleLowerCase());
-const isDev = srcBranch.startsWith("refs/heads/dev".toLocaleLowerCase());
-const isUAT = srcBranch.startsWith("refs/heads/uat".toLocaleLowerCase());
+// const isUploadVersion = srcBranch.startsWith("refs/tags/".toLocaleLowerCase());
+// const isMaster = srcBranch.startsWith("refs/heads/master".toLocaleLowerCase());
+// const isDev = srcBranch.startsWith("refs/heads/dev".toLocaleLowerCase());
+// const isUAT = srcBranch.startsWith("refs/heads/uat".toLocaleLowerCase());
 
-if (!isUploadVersion && (isMaster || isDev || isUAT)) {
-    return;
-}
+// if (!isUploadVersion && (isMaster || isDev || isUAT)) {
+//     return;
+// }
+
+// if (isUploadVersion) {
+//     userAndRepo = userAndRepo + "-ver";
+// }
 
 
-Promise.all([execCommand(`git tag -f ${existTagName} -m ${tagMessage}`).then(() => {
-    execCommand(`git push --force origin :refs/tags/${existTagName}`).then(() => {
+let mainTask = (async () => {
+    arrUserAndRepo = userAndRepo.split('/');
+    let reposPrefix = `/repos/${userAndRepo}/releases`;
+
+    await execCommand(`git tag -f ${existTagName} -m ${tagMessage}`)
+    await execCommand(`git push --force origin :refs/tags/${existTagName}`).then(() => {
         console.log("update git tag end.");
     })
-})])
 
-if (isUploadVersion) {
-    userAndRepo = userAndRepo + "-ver";
-}
-
-let mainTask = (async (_userAndRepo, _existTagName, _tagMessage, _assetses) => {
-    arrUserAndRepo = _userAndRepo.split('/');
-    let reposPrefix = `/repos/${_userAndRepo}/releases`;
     let getTagResult = await octokit.request('GET ' + reposPrefix + '/tags/{tag}', {
-        tag: _existTagName
+        tag: existTagName
     }).catch((reason) => {
         console.log("check release failed:")
         console.log(reason)
@@ -82,9 +79,9 @@ let mainTask = (async (_userAndRepo, _existTagName, _tagMessage, _assetses) => {
 
     let nowDate = new Date(Date.now()).toUTCString();
     let newReleaseData = {
-        tag_name: _existTagName,
-        name: _existTagName,
-        body: `${nowDate}\n` + _tagMessage,
+        tag_name: existTagName,
+        name: existTagName,
+        body: `${nowDate}\n` + tagMessage,
         draft: false,
         prerelease: false
     }
@@ -135,22 +132,21 @@ let mainTask = (async (_userAndRepo, _existTagName, _tagMessage, _assetses) => {
 
     newReleaseResult = newReleaseResult.data
 
-    let arrAssets = _assetses.split(' ');
-    if (Boolean(assetsePath)) {
-        path.join(assetsePath, dataPath)
-    }
+    let arrAssets = assetses.split(' ');
 
     const payloadUploadReleaseAsset = (id, dataName) => {
         let dataPath = dataName
         if (Boolean(assetsePath)) {
             dataPath = path.join(assetsePath, dataName)
         }
+        let stream = fs.createReadStream(dataPath)
         return {
             owner: arrUserAndRepo[0],
             repo: arrUserAndRepo[1],
             release_id: id,
-            data: fs.readFileSync(dataPath),
-            name: dataName,
+            contentLength: fs.statSync(dataPath).size,
+            file: stream,
+            name: dataName
         }
     };
 
@@ -170,19 +166,19 @@ let mainTask = (async (_userAndRepo, _existTagName, _tagMessage, _assetses) => {
         // })
 
         const uploadAsset = await octokit.rest.repos.uploadReleaseAsset(
-            payloadUploadReleaseAsset(newReleaseResult.id, assetsName),
+            payloadUploadReleaseAsset(newReleaseResult.id, assetsName)
         ).catch((reason) => {
             console.log(`upload assets ${assetsName} failed:`)
             console.log(reason)
             console.log("\n\n")
         })
 
-        console.log(`upload assets ${assetsName}:\n`)
-        console.log(uploadAssets)
-        console.log("\n\n")
+        if (uploadAsset !== undefined) {
+            console.log(`upload assets ${assetsName}:\n`)
+            console.log(uploadAsset)
+            console.log("\n\n")
+        }
     }
 
 
-})(userAndRepo, existTagName, tagMessage, assetses);
-
-Promise.all([mainTask])
+})();
