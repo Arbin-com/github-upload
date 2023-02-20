@@ -9,11 +9,11 @@ function github-upload {
         [string] $tagMessage,
         [string[]] $assetses
     )
-    //ensure root path.
+    # ensure root path.
     $oldPath = resolve-path ./
     $ignoreCase = 'CurrentCultureIgnoreCase'
-    $isUploadVersion = $srcBranch.StartsWith('refs/tags/', $ignoreCase)
-    $isMaster = $srcBranch.StartsWith('refs/heads/master', $ignoreCase)
+    $isUploadVersion = $srcBranch.StartsWith('refs/tags/', $ignoreCase) 
+    $isMaster = $srcBranch.StartsWith('refs/heads/master', $ignoreCase) #only check prefix
     $isDev = $srcBranch.StartsWith('refs/heads/dev', $ignoreCase)
     $isUAT = $srcBranch.StartsWith('refs/heads/uat', $ignoreCase)
 
