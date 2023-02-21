@@ -94,17 +94,19 @@ let mainTask = (async () => {
             })
         }
     }
-
-    await execCommand(`git tag -f ${existTagName} -m "${tagMessage}"`)
-    await execCommand(`git push --force origin :refs/tags/${existTagName}`).then(() => {
-        console.log("update git tag end.");
-    })
+    else
+    {
+        await execCommand(`git tag -f ${existTagName} -m "${tagMessage}"`)
+        await execCommand(`git push --force origin :refs/tags/${existTagName}`).then(() => {
+            console.log("update git tag end.");
+        })
+    }
 
     let nowDate = new Date(Date.now()).toUTCString();
     let newReleaseData = {
         tag_name: existTagName,
         name: existTagName,
-        body: `${nowDate}\n` + tagMessage,
+        body: `🚀🚀🚀\n${nowDate}\n` + tagMessage,
         draft: false,
         prerelease: false
     }
