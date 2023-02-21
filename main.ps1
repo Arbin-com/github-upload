@@ -45,8 +45,8 @@ function github-upload {
     git config --global user.email "test@arbin.com"
     git config --global user.name "arbin-test"
 
-    git tag -f $existTagName -m $tagMessage
-    git push --force origin :refs/tags/$existTagName
+    # git tag -f $existTagName -m $tagMessage
+    # git push --force origin :refs/tags/$existTagName
 
     node ../github-upload/main.js $srcBranch $userAndRepo $token $existTagName $tagMessage $assetses "$oldPath"
 }
