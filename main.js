@@ -56,8 +56,14 @@ const octokit = new Octokit({
 let mainTask = (async () => {
     arrUserAndRepo = userAndRepo.split('/');
     let reposPrefix = `/repos/${userAndRepo}/releases`;
+    let arrAssets = assetses.split(' ');
+    let arrAssetsLen = arrAssets.length
+    const assetMap = new Map();
+    for(let i = 0; i < arrAssetsLen; i++) {
+        assetMap[arrAssets[i]] = "";
+    }
 
-    await execCommand(`git tag -f ${existTagName} -m ${tagMessage}`)
+    await execCommand(`git tag -f ${existTagName} -m "${tagMessage}"`)
     await execCommand(`git push --force origin :refs/tags/${existTagName}`).then(() => {
         console.log("update git tag end.");
     })
@@ -96,13 +102,16 @@ let mainTask = (async () => {
         // console.log(deleteTagResult)
         // console.log("\n\n")
 
-        let arrAssets = getTagResult.assets;
-        let arrAssetsLen = arrAssets.length
-        for (let i = 0; i < arrAssetsLen; i++) {
+        let oldArrAssets = getTagResult.assets;
+        let oldArrAssetsLen = oldArrAssets.length
+        for (let i = 0; i < oldArrAssetsLen; i++) {
+            if(assetMap[oldArrAssets[i].name] !== "")
+                continue;
+
             await octokit.rest.repos.deleteReleaseAsset({
                 owner: arrUserAndRepo[0],
                 repo: arrUserAndRepo[1],
-                asset_id: arrAssets[i].id,
+                asset_id: oldArrAssets[i].id,
             }).catch((reason) => {
                 console.log("delete old assets failed:")
                 console.log(reason)
@@ -132,7 +141,7 @@ let mainTask = (async () => {
 
     newReleaseResult = newReleaseResult.data
 
-    let arrAssets = assetses.split(' ');
+    
 
     const payloadUploadReleaseAsset = (id, dataName) => {
         let dataPath = dataName
@@ -151,7 +160,7 @@ let mainTask = (async () => {
 
 
 
-    let arrAssetsLen = arrAssets.length
+    
     for (let i = 0; i < arrAssetsLen; i++) {
         let assetsName = arrAssets[i];
         // let uploadAssets = await octokit.request('POST ' + reposPrefix + '{release_id}/assets{?name}', {
