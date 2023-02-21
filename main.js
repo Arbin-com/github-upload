@@ -63,11 +63,6 @@ let mainTask = (async () => {
         assetMap[arrAssets[i]] = "";
     }
 
-    await execCommand(`git tag -f ${existTagName} -m "${tagMessage}"`)
-    await execCommand(`git push --force origin :refs/tags/${existTagName}`).then(() => {
-        console.log("update git tag end.");
-    })
-
     let getTagResult = await octokit.request('GET ' + reposPrefix + '/tags/{tag}', {
         tag: existTagName
     }).catch((reason) => {
@@ -81,27 +76,7 @@ let mainTask = (async () => {
         console.log(getTagResult)
         console.log("\n\n")
         getTagResult = getTagResult.data
-    }
-
-    let nowDate = new Date(Date.now()).toUTCString();
-    let newReleaseData = {
-        tag_name: existTagName,
-        name: existTagName,
-        body: `${nowDate}\n` + tagMessage,
-        draft: false,
-        prerelease: false
-    }
-
-
-    let newReleaseResult;
-    if (getTagResult !== undefined && getTagResult.id !== undefined) {
-        // let deleteTagResult = await octokit.request('DELETE ' + reposPrefix + '/{release_id}', {
-        //     release_id: getTagResult.id
-        // })
-        // console.log("remove old tag result:")
-        // console.log(deleteTagResult)
-        // console.log("\n\n")
-
+        
         let oldArrAssets = getTagResult.assets;
         let oldArrAssetsLen = oldArrAssets.length
         for (let i = 0; i < oldArrAssetsLen; i++) {
@@ -118,7 +93,30 @@ let mainTask = (async () => {
                 console.log("\n\n")
             })
         }
+    }
 
+    await execCommand(`git tag -f ${existTagName} -m "${tagMessage}"`)
+    await execCommand(`git push --force origin :refs/tags/${existTagName}`).then(() => {
+        console.log("update git tag end.");
+    })
+
+    let nowDate = new Date(Date.now()).toUTCString();
+    let newReleaseData = {
+        tag_name: existTagName,
+        name: existTagName,
+        body: `${nowDate}\n` + tagMessage,
+        draft: false,
+        prerelease: false
+    }
+
+    let newReleaseResult;
+    if (getTagResult !== undefined && getTagResult.id !== undefined) {
+        // let deleteTagResult = await octokit.request('DELETE ' + reposPrefix + '/{release_id}', {
+        //     release_id: getTagResult.id
+        // })
+        // console.log("remove old tag result:")
+        // console.log(deleteTagResult)
+        // console.log("\n\n")
         newReleaseResult = await octokit.request('PATCH ' + reposPrefix + '/{release_id}', Object.assign(newReleaseData, {
             release_id: getTagResult.id
         }))
