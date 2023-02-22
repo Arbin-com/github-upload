@@ -42,27 +42,15 @@ function github-upload {
     )
     # ensure root path.
     $oldPath = resolve-path ./
-    $ignoreCase = 'CurrentCultureIgnoreCase'
-    $isUploadVersion = $srcBranch.StartsWith('refs/tags/', $ignoreCase) 
-    $isMaster = $srcBranch.StartsWith('refs/heads/master', $ignoreCase) #only check prefix
-    $isDev = $srcBranch.StartsWith('refs/heads/dev', $ignoreCase)
-    $isUAT = $srcBranch.StartsWith('refs/heads/uat', $ignoreCase)
-
-    if(!($isUploadVersion) -and ($isMaster -or $isDev -or $isUAT))
+    
+    $suffix = get-dest-suffix -srcBranch $srcBranch
+    if([string]::IsNullOrEmpty($suffix))
     {
         echo "No resources need to be uploaded"
         return
     }
 
-    if($isUploadVersion)
-    {
-        $userAndRepo = $userAndRepo + "-version"
-    }
-    else   
-    {
-        $userAndRepo = $userAndRepo + "-test"
-    }
-
+    $userAndRepo = $userAndRepo + "-" + $suffix
     $repoName =  $userAndRepo.Split("/")[1]
 
     git clone https://$token@github.com/$userAndRepo
