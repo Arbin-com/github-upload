@@ -1,4 +1,35 @@
 
+function get-dest-suffix {
+    param (
+        [string] $srcBranch
+    )
+
+    $ignoreCase = 'CurrentCultureIgnoreCase'
+    $isUploadVersion = $srcBranch.StartsWith('refs/tags/', $ignoreCase) 
+    $isMaster = $srcBranch.StartsWith('refs/heads/master', $ignoreCase) #only check prefix
+    $isDev = $srcBranch.StartsWith('refs/heads/dev', $ignoreCase)
+    $isUAT = $srcBranch.StartsWith('refs/heads/uat', $ignoreCase)
+
+    if(!($isUploadVersion) -and ($isMaster -or $isDev -or $isUAT))
+    {
+        return ""
+    }
+
+    if($isUploadVersion)
+    {
+        return "version"
+    }
+    return "test"
+}
+
+function need-upload {
+    param (
+        [string] $srcBranch
+    )
+
+    $suffix = get-dest-suffix -srcBranch $srcBranch
+    return -not ([string]::IsNullOrEmpty($suffix))
+}
 
 function github-upload {
     param (
