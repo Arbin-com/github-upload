@@ -97,7 +97,7 @@ let mainTask = (async () => {
     else
     {
         await execCommand(`git tag -f ${existTagName} -m "${tagMessage}"`)
-        await execCommand(`git push --force origin :refs/tags/${existTagName}`).then(() => {
+        await execCommand(`git push --force origin refs/tags/${existTagName}`).then(() => {
             console.log("update git tag end.");
         })
     }
