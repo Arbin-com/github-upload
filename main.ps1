@@ -5,21 +5,32 @@ function get-dest-suffix {
     )
 
     $ignoreCase = 'CurrentCultureIgnoreCase'
-    $isUploadVersion = $srcBranch.StartsWith('refs/tags/', $ignoreCase) 
+    $isTag = $srcBranch.StartsWith('refs/tags/', $ignoreCase) 
     $isMaster = $srcBranch.StartsWith('refs/heads/master', $ignoreCase) #only check prefix
-    $isDev = $srcBranch.StartsWith('refs/heads/dev', $ignoreCase)
-    $isUAT = $srcBranch.StartsWith('refs/heads/uat', $ignoreCase)
 
-    if(!($isUploadVersion) -and ($isMaster -or $isDev -or $isUAT))
+    if($isTag)
     {
-        return ""
+        [string[]] $stableVersions = @("_PV_", "_ZY_", "_RD_")
+        for ($j = 0; $j -lt ($stableVersions.length); $j++) 
+        {
+            $content = $stableVersions[$j];
+            if($srcBranch.Contains($content, $ignoreCase))
+            {
+                return "stable-tag"
+            }
+        }
+
+        if($srcBranch.Contains("_TY_", $ignoreCase))
+        {
+            return "hotfix-tag"
+        }        
+
+        return "hotfix-branch"
     }
 
-    if($isUploadVersion)
-    {
-        return "version"
-    }
-    return "test"
+    if(!($isMaster)) { return "" }
+
+    return "hotfix-branch"
 }
 
 function need-upload {
@@ -44,13 +55,29 @@ function github-upload {
     $oldPath = resolve-path ./
     
     $suffix = get-dest-suffix -srcBranch $srcBranch
-    if([string]::IsNullOrEmpty($suffix))
-    {
-        echo "No resources need to be uploaded"
-        return
+    $repoSuffix = ""
+    switch ($suffix){
+        'hotfix-branch'   
+        {
+            $existTagName = git rev-parse --abbrev-ref HEAD
+            $repoSuffix = "hotfix"
+        }
+        'hotfix-tag'
+        {
+            $repoSuffix = "hotfix"
+        }
+        'stable-tag' 
+        {
+            $repoSuffix = "stable"    
+        }
+        default 
+        {
+            echo "No resources need to be uploaded"
+            return 
+        }
     }
 
-    $userAndRepo = $userAndRepo + "-" + $suffix
+    $userAndRepo = $userAndRepo + "-" + $repoSuffix
     $repoName =  $userAndRepo.Split("/")[1]
 
     git clone https://$token@github.com/$userAndRepo
