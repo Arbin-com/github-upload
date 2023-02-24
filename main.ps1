@@ -1,29 +1,39 @@
 
+function dotnet-remove-other-file {
+    param (
+        [string] $binPath
+    )
+
+    [string[]] $removePaths = @("de", "es", "ja", "ru")
+}
+
 function get-dest-suffix {
     param (
         [string] $srcBranch
     )
 
+
     $ignoreCase = 'CurrentCultureIgnoreCase'
     $isTag = $srcBranch.StartsWith('refs/tags/', $ignoreCase) 
     $isMaster = $srcBranch.StartsWith('refs/heads/master', $ignoreCase) #only check prefix
 
+    $srcBranch = $srcBranch.ToUpper()
     if($isTag)
     {
         [string[]] $stableVersions = @("_PV_", "_ZY_", "_RD_")
         for ($j = 0; $j -lt ($stableVersions.length); $j++) 
         {
             $content = $stableVersions[$j];
-            if($srcBranch.Contains($content, $ignoreCase))
+            if($srcBranch.Contains($content))
             {
                 return "stable-tag"
             }
         }
 
-        if($srcBranch.Contains("_TY_", $ignoreCase))
+        if($srcBranch.Contains("_TY_"))
         {
             return "hotfix-tag"
-        }        
+        }
 
         return "hotfix-branch"
     }
