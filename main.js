@@ -32,6 +32,7 @@ const existTagName = args[3 + cmdOffset];
 const tagMessage = args[4 + cmdOffset];
 const assetses = args[5 + cmdOffset];
 const assetsePath = args[6 + cmdOffset].trim();
+const tagSuffix = args[7 + cmdOffset].trim();
 
 
 const octokit = new Octokit({
@@ -63,8 +64,9 @@ let mainTask = (async () => {
         assetMap[arrAssets[i]] = "";
     }
 
+    let realTagName = existTagName + (tagSuffix === "" ? "" : `-${tagSuffix}`)
     let getTagResult = await octokit.request('GET ' + reposPrefix + '/tags/{tag}', {
-        tag: existTagName
+        tag: realTagName
     }).catch((reason) => {
         console.log("check release failed:")
         console.log(reason)
@@ -96,15 +98,15 @@ let mainTask = (async () => {
     }
     else
     {
-        await execCommand(`git tag -f ${existTagName} -m "${tagMessage}"`)
-        await execCommand(`git push --force origin refs/tags/${existTagName}`).then(() => {
+        await execCommand(`git tag -f ${realTagName} -m "${tagMessage}"`)
+        await execCommand(`git push --force origin refs/tags/${realTagName}`).then(() => {
             console.log("update git tag end.");
         })
     }
 
     let nowDate = new Date(Date.now()).toUTCString();
     let newReleaseData = {
-        tag_name: existTagName,
+        tag_name: realTagName,
         name: existTagName,
         body: `🚀🚀🚀\n${nowDate}\n` + tagMessage,
         draft: false,
