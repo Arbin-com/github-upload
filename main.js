@@ -108,7 +108,7 @@ let mainTask = (async () => {
     let newReleaseData = {
         tag_name: realTagName,
         name: existTagName,
-        body: `🚀🚀🚀\n${nowDate}\n` + tagMessage,
+        body: `create by '${tagSuffix}'\n${nowDate}\n` + tagMessage + `\n🚀🚀🚀`,
         draft: false,
         prerelease: false
     }
