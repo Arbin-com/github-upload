@@ -58,8 +58,7 @@ function get-dest-suffix {
     if($isTag)
     {
         [string[]] $stableVersions = @("_PV_", "_ZY_", "_RD_")
-        for ($j = 0; $j -lt ($stableVersions.length); $j++) 
-        {
+        for ($j = 0; $j -lt ($stableVersions.length); $j++) {
             $content = $stableVersions[$j];
             if($srcBranch.Contains($content))
             {
@@ -109,12 +108,25 @@ function github-upload {
     switch ($suffix){
         'hotfix-branch'   
         {
-            $headBranch = git branch --show-current
-            if($headBranch -eq "master" -and $isTag) {
+            $headBranchs = git branch --contains tags/$existTagName
+            $tagByBranchs = $headBranchs.split('\n')
+            
+            $hasMasterBranch = $false
+            $solveBranchName = ""
+            for ($j = 0; $j -lt ($tagByBranchs.length); $j++) {
+                $tempParts = $tagByBranchs[$j];
+                $branchNames = $tempParts.split(' ')
+                $branchName = $branchNames[$branchNames.length - 1]
+                if($branchName -eq "master") { $hasMasterBranch = $true }
+                elseif($solveBranchName -eq "") { $solveBranchName = $branchName }
+                elseif($hasMasterBranch) { break; }
+            }
+
+            if($hasMasterBranch -and ($solveBranchName -eq "") -and $isTag) {
                 $tagSuffix = "tag"
             }
             else {
-                $existTagName = $headBranch
+                $existTagName = $solveBranchName
                 $tagSuffix = "branch"
             }
             $repoSuffix = "hotfix"
