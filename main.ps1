@@ -71,8 +71,6 @@ function get-dest-suffix {
     return "hotfix-branch"
 }
 
-function get-release
-
 function need-upload {
     param (
         [string] $srcBranch
