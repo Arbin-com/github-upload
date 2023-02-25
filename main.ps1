@@ -4,7 +4,7 @@ function dotnet-remove-other-file {
         [string] $binPath
     )
 
-    [string[]] $removePaths = @("de", "es", "ja", "ru")
+    [string[]] $removePaths = @("de", "es", "ja", "ru", "tr", "fr", "hu", "it", "pt", "sk", "sv", "zh-tw", "zh-cn")
     for ($j = 0; $j -lt ($removePaths.length); $j++) {
         $pathName = $removePaths[$j];
         $remotePath = "$binPath/$pathName"
@@ -13,6 +13,15 @@ function dotnet-remove-other-file {
     remove-item $binPath/DevExpress*.xml
     remove-item $binPath/*.pdb
     remove-item $binPath/empty.txt -ErrorAction SilentlyContinue
+
+    $tempItems = Get-ChildItem $binPath/*.dll -Recurse
+    for ($j = 0; $j -lt ($tempItems.length); $j++) {
+        $item = $tempItems[$j];
+        $directoryName = $item.DirectoryName;
+        $baseName = $item.BaseName;
+        $removePath = "$directoryName/$baseName"
+        Remove-Item "$removePath.xml" -Force -Recurse -ErrorAction SilentlyContinue
+    }
 }
 
 $global:commit_log_file_default_number = "1000"
