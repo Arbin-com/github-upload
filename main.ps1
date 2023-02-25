@@ -58,8 +58,7 @@ function get-dest-suffix {
     if($isTag)
     {
         [string[]] $stableVersions = @("_PV_", "_ZY_", "_RD_")
-        for ($j = 0; $j -lt ($stableVersions.length); $j++) 
-        {
+        for ($j = 0; $j -lt ($stableVersions.length); $j++) {
             $content = $stableVersions[$j];
             if($srcBranch.Contains($content))
             {
@@ -91,6 +90,7 @@ function need-upload {
 
 function github-upload {
     param (
+        [string] $commitID,
         [string] $srcBranch,
         [string] $userAndRepo,
         [string] $token,
@@ -109,14 +109,34 @@ function github-upload {
     switch ($suffix){
         'hotfix-branch'   
         {
-            $headBranch = git rev-parse --abbrev-ref HEAD
-            if($headBranch -eq "master" -and $isTag) {
-                $tagSuffix = "tag"
+            $tagSuffix = "branch"
+            if($isTag) {
+                $headBranchs = git branch -a --contains $commitID
+                $tagByBranchs = $headBranchs.split('\n')
+                
+                $hasMasterBranch = $false
+                $solveBranchName = ""
+                for ($j = 0; $j -lt ($tagByBranchs.length); $j++) {
+                    $tempParts = $tagByBranchs[$j];
+                    $branchNames = $tempParts.split(' ')
+                    $branchName = $branchNames[$branchNames.length - 1]
+                    $branchNames = $branchName.split('/')
+                    $branchName = $branchNames[$branchNames.length - 1]
+                    if($branchName -eq "master") { $hasMasterBranch = $true }
+                    elseif($solveBranchName -eq "") { $solveBranchName = $branchName }
+                    elseif($hasMasterBranch) { break; }
+                }
+                if($hasMasterBranch -and ($solveBranchName -eq "")) {
+                    $tagSuffix = "tag"
+                }
+                else {
+                    $existTagName = $solveBranchName
+                }
             }
             else {
-                $existTagName = $headBranch
-                $tagSuffix = "branch"
+                
             }
+            
             $repoSuffix = "hotfix"
         }
         'hotfix-tag'
