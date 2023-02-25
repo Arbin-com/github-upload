@@ -109,7 +109,7 @@ function github-upload {
     switch ($suffix){
         'hotfix-branch'   
         {
-            $headBranch = git rev-parse --abbrev-ref HEAD
+            $headBranch = git branch --show-current
             if($headBranch -eq "master" -and $isTag) {
                 $tagSuffix = "tag"
             }
