@@ -112,12 +112,13 @@ function github-upload {
             $tagSuffix = "branch"
             if($isTag) {
                 $headBranchs = git branch -a --contains $commitID
-                $tagByBranchs = $headBranchs.split('\n')
+                $tagByBranchs = $headBranchs.split("`n")    
                 
                 $hasMasterBranch = $false
                 $solveBranchName = ""
                 for ($j = 0; $j -lt ($tagByBranchs.length); $j++) {
                     $tempParts = $tagByBranchs[$j];
+                    if($tempParts.Contains("detached at")){ continue }
                     $branchNames = $tempParts.split(' ')
                     $branchName = $branchNames[$branchNames.length - 1]
                     $branchNames = $branchName.split('/')
@@ -130,6 +131,7 @@ function github-upload {
                     $tagSuffix = "tag"
                 }
                 else {
+                    $tagMessage = "$tagMessage`n" + "tag $existTagName`n"
                     $existTagName = $solveBranchName
                 }
             }
