@@ -131,7 +131,7 @@ function github-upload {
                     $tagSuffix = "tag"
                 }
                 else {
-                    $tagMessage = "$tagMessage`n" + "tag $tagMessage`n"
+                    $tagMessage = "$tagMessage`n" + "tag $existTagName`n"
                     $existTagName = $solveBranchName
                 }
             }
