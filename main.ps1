@@ -11,7 +11,28 @@ function dotnet-remove-other-file {
         Remove-Item $remotePath -Force -Recurse -ErrorAction SilentlyContinue
     }
     remove-item $binPath/DevExpress*.xml
+    remove-item $binPath/*.pdb
     remove-item $binPath/empty.txt -ErrorAction SilentlyContinue
+}
+
+$global:commit_log_file_default_number = "1000"
+
+function add-commit-log-file {
+        param (
+        [string] $fullPath,
+        [string] $maxNumber
+    )
+
+    if(!([string]::IsNullOrEmpty($suffix)))
+    {
+        $maxNumber = "-n $maxNumber"
+    }
+    else
+    {
+        $maxNumber = "-n $global:commit_log_file_default_number"
+    }
+
+    git log $maxNumber --date=format-local:'%Y-%m-%d %H:%M:%S' --pretty=format:'%ad <%ce> %s' > $fullPath
 }
 
 function get-dest-suffix {
@@ -50,6 +71,8 @@ function get-dest-suffix {
     return "hotfix-branch"
 }
 
+function get-release
+
 function need-upload {
     param (
         [string] $srcBranch
@@ -66,7 +89,7 @@ function github-upload {
         [string] $token,
         [string] $existTagName,
         [string] $tagMessage,
-        [string[]] $assetses
+        [string] $wrapPathName
     )
     # ensure root path.
     $oldPath = resolve-path ./
@@ -108,6 +131,11 @@ function github-upload {
 
     $userAndRepo = $userAndRepo + "-" + $repoSuffix
     $repoName =  $userAndRepo.Split("/")[1]
+
+    Remove-Item $existTagName -Force -Recurse -ErrorAction SilentlyContinue
+    rename-item "$wrapPathName" -newname "$existTagName" -PassThru
+    $assetses = "$existTagName.zip"
+    Compress-Archive -Path $existTagName -DestinationPath $assetses
 
     git clone https://$token@github.com/$userAndRepo
 

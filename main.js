@@ -104,11 +104,17 @@ let mainTask = (async () => {
         })
     }
 
+    let emojiText = "🚀";
+    if(userAndRepo.endsWith("hotfix") && tagSuffix === "branch" && existTagName !== "master")
+    {
+        emojiText = "🐛"
+    }
+
     let nowDate = new Date(Date.now()).toUTCString();
     let newReleaseData = {
         tag_name: realTagName,
         name: existTagName,
-        body: `create by '${tagSuffix}'\n${nowDate}\n` + tagMessage + `\n🚀🚀🚀`,
+        body: `name by '${tagSuffix}'\n${nowDate}\n` + tagMessage + `\n${emojiText.repeat(3)}`,
         draft: false,
         prerelease: false
     }
