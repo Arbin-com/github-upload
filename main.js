@@ -114,7 +114,7 @@ let mainTask = (async () => {
     let newReleaseData = {
         tag_name: realTagName,
         name: existTagName,
-        body: `name by '${tagSuffix}'\n${nowDate}\n` + tagMessage + `\n${emojiText.repeat(3)}`,
+        body: `name by ${tagSuffix}\n${nowDate}\n` + tagMessage + `\n${emojiText.repeat(3)}`,
         draft: false,
         prerelease: false
     }
