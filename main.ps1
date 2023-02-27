@@ -29,7 +29,8 @@ $global:commit_log_file_default_number = "1000"
 function add-commit-log-file {
         param (
         [string] $fullPath,
-        [string] $maxNumber
+        [string] $maxNumber,
+        [string] $commitID
     )
 
     if(!([string]::IsNullOrEmpty($suffix)))
@@ -41,7 +42,7 @@ function add-commit-log-file {
         $maxNumber = "-n $global:commit_log_file_default_number"
     }
 
-    git log $maxNumber --date=format-local:'%Y-%m-%d %H:%M:%S' --pretty=format:'%ad <%ce> %s' > $fullPath
+    git log $commitID $maxNumber --date=format-local:'%Y-%m-%d %H:%M:%S' --pretty=format:'%ad <%ce> %s' > $fullPath
 }
 
 function get-dest-suffix {
