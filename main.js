@@ -73,6 +73,13 @@ let mainTask = (async () => {
         console.log("\n\n")
     })
 
+    let emojiText = "🚀";
+    if(userAndRepo.endsWith("hotfix") && tagSuffix === "branch" && existTagName !== "master")
+    {
+        emojiText = "🐛"
+    }
+
+    let textBody = ""
     if (getTagResult !== undefined) {
         console.log("get tag result:")
         console.log(getTagResult)
@@ -95,6 +102,12 @@ let mainTask = (async () => {
                 console.log("\n\n")
             })
         }
+
+        let getTagResultBody = getTagResult.body
+        if(getTagResultBody !== "" && getTagResultBody !== undefined && !getTagResultBody.startsWith("name by "))
+        {
+            textBody = getTagResultBody
+        }
     }
     else
     {
@@ -104,19 +117,18 @@ let mainTask = (async () => {
         })
     }
 
-    let emojiText = "🚀";
-    if(userAndRepo.endsWith("hotfix") && tagSuffix === "branch" && existTagName !== "master")
+    let nowDate = new Date(Date.now()).toUTCString();
+    if(textBody === "")
     {
-        emojiText = "🐛"
+        textBody = `name by ${tagSuffix}\n${nowDate}\n` + tagMessage + `\n${emojiText.repeat(3)}`
     }
 
-    let nowDate = new Date(Date.now()).toUTCString();
     let newReleaseData = {
         tag_name: realTagName,
         name: existTagName,
-        body: `name by ${tagSuffix}\n${nowDate}\n` + tagMessage + `\n${emojiText.repeat(3)}`,
+        body: textBody,
         draft: false,
-        prerelease: false
+        prerelease: true
     }
 
     let newReleaseResult;
