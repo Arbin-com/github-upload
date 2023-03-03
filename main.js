@@ -74,7 +74,8 @@ let mainTask = (async () => {
     })
 
     let emojiText = "🚀";
-    if(userAndRepo.endsWith("hotfix") && tagSuffix === "branch" && existTagName !== "master")
+    let isHotfix = userAndRepo.endsWith("hotfix")
+    if(isHotfix && tagSuffix === "branch" && existTagName !== "master")
     {
         emojiText = "🐛"
     }
@@ -88,14 +89,18 @@ let mainTask = (async () => {
         
         let oldArrAssets = getTagResult.assets;
         let oldArrAssetsLen = oldArrAssets.length
+        
+        console.log(`check delete assets length: ${oldArrAssetsLen}\n\n`)
         for (let i = 0; i < oldArrAssetsLen; i++) {
-            if(assetMap[oldArrAssets[i].name] !== "")
+            let oldAssetsData = oldArrAssets[i]
+            if(!isHotfix && assetMap[oldAssetsData.name] !== "")
                 continue;
-
+            
+            console.log(`delete assets ${oldAssetsData.name}`)
             await octokit.rest.repos.deleteReleaseAsset({
                 owner: arrUserAndRepo[0],
                 repo: arrUserAndRepo[1],
-                asset_id: oldArrAssets[i].id,
+                asset_id: oldAssetsData.id,
             }).catch((reason) => {
                 console.log("delete old assets failed:")
                 console.log(reason)

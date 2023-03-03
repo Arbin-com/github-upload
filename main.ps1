@@ -162,10 +162,17 @@ function github-upload {
     $userAndRepo = $userAndRepo + "-" + $repoSuffix
     $repoName =  $userAndRepo.Split("/")[1]
 
+    $changedZipName = "$existTagName"
+    if($repoSuffix -eq "hotfix")
+    {
+        $timeValue = ((get-date).ToUniversalTime()).ToString("yyyyMMdd-HH-mm")
+        $changedZipName = "$changedZipName-$timeValue"
+    }
+
     Remove-Item $existTagName -Force -Recurse -ErrorAction SilentlyContinue
-    rename-item "$wrapPathName" -newname "$existTagName" -PassThru
-    $assetses = "$existTagName.zip"
-    Compress-Archive -Path $existTagName -DestinationPath $assetses
+    rename-item "$wrapPathName" -newname "$changedZipName" -PassThru
+    $assetses = "$changedZipName.zip"
+    Compress-Archive -Path $changedZipName -DestinationPath $assetses
 
     git clone https://$token@github.com/$userAndRepo
 
