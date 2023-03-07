@@ -47,7 +47,8 @@ function add-commit-log-file {
 
 function get-dest-suffix {
     param (
-        [string] $srcBranch
+        [string] $srcBranch,
+        [string[]] $stableVersions
     )
 
 
@@ -58,10 +59,13 @@ function get-dest-suffix {
     $srcBranch = $srcBranch.ToUpper()
     if($isTag)
     {
-        [string[]] $stableVersions = @("_PV_", "_ZY_", "_RD_")
+        if($stableVersions -eq $null)
+        {
+            $stableVersions = @("_PV_", "_ZY_", "_RD_")
+        }        
         for ($j = 0; $j -lt ($stableVersions.length); $j++) {
             $content = $stableVersions[$j];
-            if($srcBranch.Contains($content))
+            if($srcBranch.Contains($content.ToUpper()))
             {
                 return "stable-tag"
             }
@@ -97,13 +101,14 @@ function github-upload {
         [string] $token,
         [string] $existTagName,
         [string] $tagMessage,
-        [string] $wrapPathName
+        [string] $wrapPathName,
+        [string[]] $stableVersions
     )
     # ensure root path.
     $oldPath = resolve-path ./
     
     $ignoreCase = 'CurrentCultureIgnoreCase'
-    $suffix = get-dest-suffix -srcBranch $srcBranch
+    $suffix = get-dest-suffix -srcBranch $srcBranch -stableVersions $stableVersions
     $repoSuffix = ""
     $tagSuffix = ""
     $isTag = $srcBranch.StartsWith('refs/tags/', $ignoreCase) 
