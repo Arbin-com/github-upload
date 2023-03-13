@@ -167,14 +167,15 @@ function github-upload {
     $userAndRepo = $userAndRepo + "-" + $repoSuffix
     $repoName =  $userAndRepo.Split("/")[1]
 
-    $changedZipName = "$existTagName"
+    $partTags = $existTagName.Split("/")
+    $changedZipName = $partTags[$partTags.length - 1]
     if($repoSuffix -eq "hotfix")
     {
         $timeValue = ((get-date).ToUniversalTime()).ToString("yyyyMMdd-HH-mm")
         $changedZipName = "$changedZipName-$timeValue"
     }
 
-    Remove-Item $existTagName -Force -Recurse -ErrorAction SilentlyContinue
+    Remove-Item $changedZipName -Force -Recurse -ErrorAction SilentlyContinue
     rename-item "$wrapPathName" -newname "$changedZipName" -PassThru
     $assetses = "$changedZipName.zip"
     Compress-Archive -Path $changedZipName -DestinationPath $assetses
