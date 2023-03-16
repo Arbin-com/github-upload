@@ -22,6 +22,9 @@ const execCommand = (cmd) => {
 }
 
 const args = process.argv;
+console.log("args:");
+console.log(args);
+console.log("\n\n");
 
 let cmdOffset = 2;
 
