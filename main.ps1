@@ -122,6 +122,9 @@ function github-upload {
                 
                 $hasMasterBranch = $false
                 $solveBranchName = ""
+                echo "tagByBranchs:"
+                echo $tagByBranchs
+                echo "`n"
                 for ($j = 0; $j -lt ($tagByBranchs.length); $j++) {
                     $tempParts = $tagByBranchs[$j];
                     if($tempParts.Contains("detached at")){ continue }
