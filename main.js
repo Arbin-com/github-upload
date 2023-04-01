@@ -22,10 +22,6 @@ const execCommand = (cmd) => {
 }
 
 const args = process.argv;
-console.log("args:");
-console.log(args);
-console.log("\n\n");
-
 let cmdOffset = 2;
 
 const srcBranch = args[0 + cmdOffset];
@@ -37,25 +33,9 @@ const assetses = args[5 + cmdOffset];
 const assetsePath = args[6 + cmdOffset].trim();
 const tagSuffix = args[7 + cmdOffset].trim();
 
-
 const octokit = new Octokit({
     auth: token
 })
-
-
-// const isUploadVersion = srcBranch.startsWith("refs/tags/".toLocaleLowerCase());
-// const isMaster = srcBranch.startsWith("refs/heads/master".toLocaleLowerCase());
-// const isDev = srcBranch.startsWith("refs/heads/dev".toLocaleLowerCase());
-// const isUAT = srcBranch.startsWith("refs/heads/uat".toLocaleLowerCase());
-
-// if (!isUploadVersion && (isMaster || isDev || isUAT)) {
-//     return;
-// }
-
-// if (isUploadVersion) {
-//     userAndRepo = userAndRepo + "-ver";
-// }
-
 
 let mainTask = (async () => {
     arrUserAndRepo = userAndRepo.split('/');
@@ -63,7 +43,7 @@ let mainTask = (async () => {
     let arrAssets = assetses.split(' ');
     let arrAssetsLen = arrAssets.length
     const assetMap = new Map();
-    for(let i = 0; i < arrAssetsLen; i++) {
+    for (let i = 0; i < arrAssetsLen; i++) {
         assetMap[arrAssets[i]] = "";
     }
 
@@ -78,8 +58,7 @@ let mainTask = (async () => {
 
     let emojiText = "🚀";
     let isHotfix = userAndRepo.endsWith("hotfix")
-    if(isHotfix && tagSuffix === "branch" && existTagName !== "master")
-    {
+    if (isHotfix && tagSuffix === "branch" && existTagName !== "master") {
         emojiText = "🐛"
     }
 
@@ -89,16 +68,16 @@ let mainTask = (async () => {
         console.log(getTagResult)
         console.log("\n\n")
         getTagResult = getTagResult.data
-        
+
         let oldArrAssets = getTagResult.assets;
         let oldArrAssetsLen = oldArrAssets.length
-        
+
         console.log(`check delete assets length: ${oldArrAssetsLen}\n\n`)
         for (let i = 0; i < oldArrAssetsLen; i++) {
             let oldAssetsData = oldArrAssets[i]
-            if(!isHotfix && assetMap[oldAssetsData.name] !== "")
+            if (!isHotfix && assetMap[oldAssetsData.name] !== "")
                 continue;
-            
+
             console.log(`delete assets ${oldAssetsData.name}`)
             await octokit.rest.repos.deleteReleaseAsset({
                 owner: arrUserAndRepo[0],
@@ -112,24 +91,23 @@ let mainTask = (async () => {
         }
 
         let getTagResultBody = getTagResult.body
-        if(getTagResultBody !== "" && getTagResultBody !== undefined && !getTagResultBody.startsWith("name by "))
-        {
+        if (getTagResultBody !== "" && getTagResultBody !== undefined && !getTagResultBody.startsWith("name by ")) {
             textBody = getTagResultBody
         }
     }
-    else
-    {
+    else {
         await execCommand(`git tag -f ${realTagName} -m "${tagMessage}"`)
         await execCommand(`git push --force origin refs/tags/${realTagName}`).then(() => {
             console.log("update git tag end.");
         })
     }
 
-    let nowDate = new Date(Date.now()).toUTCString();
-    if(textBody === "")
-    {
-        textBody = `name by ${tagSuffix}\n${nowDate}\n` + tagMessage + `\n${emojiText.repeat(3)}`
+    let nowDate = new Date(Date.now()).toUTCString()
+    emojiText = emojiText.repeat(3)
+    if (textBody === "" || textBody.startsWith(emojiText)) {
+        textBody = `${emojiText} ${nowDate}\n` + tagMessage + `\n`
     }
+
 
     let newReleaseData = {
         tag_name: realTagName,
@@ -169,7 +147,7 @@ let mainTask = (async () => {
 
     newReleaseResult = newReleaseResult.data
 
-    
+
 
     const payloadUploadReleaseAsset = (id, dataName) => {
         let dataPath = dataName
@@ -188,7 +166,7 @@ let mainTask = (async () => {
 
 
 
-    
+
     for (let i = 0; i < arrAssetsLen; i++) {
         let assetsName = arrAssets[i];
         // let uploadAssets = await octokit.request('POST ' + reposPrefix + '{release_id}/assets{?name}', {
