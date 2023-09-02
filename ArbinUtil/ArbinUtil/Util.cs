@@ -10,21 +10,43 @@
 * ==============================================================================
 */
 
+using ArbinUtil.Jira;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Management.Automation;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
+using System.Xml.Linq;
+using static ArbinUtil.PSCommand.GitGetJiraIssueReleaseNoteCommand;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace ArbinUtil
 {
     public static class Util
     {
+
+        public static bool IsOpenVerbose(this PSCmdlet cmdlet)
+        {
+            return cmdlet.MyInvocation.BoundParameters.ContainsKey("Verbose");
+        }
+
+        public static Collection<PSObject> ExecOneScript(this PowerShell powerShell, string script)
+        {
+            powerShell.Commands.Clear();
+            powerShell.AddScript(script);
+            var result = powerShell.Invoke();
+            powerShell.Commands.Clear();
+            return result;
+        }
+
 
         public static string GetRelativePathPrefix(ArbinVersion version)
         {
@@ -92,6 +114,139 @@ namespace ArbinUtil
                 }
             }
         }
+
+
+        public enum Aligin
+        {
+            Left,
+            Center,
+            Right,
+        }
+
+        private class FieldInfos
+        {
+
+            public FieldInfos(PropertyInfo[] properties)
+            {
+                GetFieldText = (object obj, int index) =>
+                {
+                    object value = properties[index].GetValue(obj);
+                    return value == null ? "" : value.ToString();
+                };
+                FieldNames = properties.Select(x=>x.Name).ToArray();
+            }
+
+            public FieldInfos(PSObject pSObject)
+            {
+                GetFieldText = (object obj, int index) =>
+                {
+                    var temp = (PSObject)obj;
+                    var value = temp.Members[FieldNames[index]].Value;
+                    return value == null ? "" : value.ToString();
+                };
+                FieldNames = pSObject.Members.Where(x => x.MemberType == PSMemberTypes.NoteProperty).Select(x => x.Name).ToArray();
+            }
+
+            public string[] FieldNames { get; set; }
+            public Func<object, int, string> GetFieldText { get; set; }
+        }
+
+
+        public static string ToMarkDownTable(IEnumerable<object> source)
+        {
+            return ToMarkDownTable(source, (colName) => Util.Aligin.Left);
+        }
+
+        public static string ToMarkDownTable(IEnumerable<object> source, Func<string, Aligin> colNameAligin)
+        {
+            var first = source.FirstOrDefault();
+            if (first == null)
+                return "";
+
+            FieldInfos fieldInfos = null;
+            if(first is PSObject tempPSObject)
+            {
+                fieldInfos = new FieldInfos(tempPSObject);
+            }
+            else
+            {
+                fieldInfos = new FieldInfos(first.GetType().GetRuntimeProperties().ToArray());
+            }
+
+            return ToMarkDownTable(source, fieldInfos, colNameAligin);
+        }
+
+        public static string ConvertToMarkDownCellText(string text)
+        {
+            return text.Replace("|", @"\|");
+        }
+
+        private static string ToMarkDownTable(IEnumerable<object> source, FieldInfos infos, Func<string, Aligin> colNameAligin)
+        {
+            const int MaxPad = 100;
+
+            int colCount = infos.FieldNames.Length;
+            int elementCount = source.Count();
+            if (colCount <= 0 || elementCount <= 0)
+                return "";
+
+            string[,] table = new string[elementCount, colCount];
+            int[] colMaxLength = new int[colCount];
+
+            for (int i = 0; i < colCount; ++i)
+            {
+                string colName = infos.FieldNames[i];
+                colMaxLength[i] = Math.Min(MaxPad, colName.Length);
+            }
+
+            int index = 0;
+            foreach (var element in source)
+            {
+                for (int i = 0; i < colCount; ++i)
+                {
+                    object value = infos.GetFieldText(element, i);
+                    string text = value == null ? "" : value.ToString();
+                    table[index, i] = ConvertToMarkDownCellText(text);
+                    colMaxLength[i] = Math.Min(MaxPad, Math.Max(colMaxLength[i], text.Length));
+                }
+                ++index;
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.Append("|  ");
+            for (int i = 0; i < colCount; ++i)
+            {
+                string colName = infos.FieldNames[i];
+                sb.Append(colName.PadLeft(colMaxLength[i]));
+                sb.Append("  | ");
+            }
+
+            sb.AppendLine();
+            sb.Append("|  ");
+            for (int i = 0; i < colCount; ++i)
+            {
+                Aligin aligin = colNameAligin(infos.FieldNames[i]);
+                sb.Append(aligin == Aligin.Center ? ':' : ' ');
+                sb.Append('-', Math.Max(1, colMaxLength[i] - 1));
+                sb.Append(aligin != Aligin.Left ? ':' : ' ');
+                sb.Append(" | ");
+            }
+
+
+            for (int i = 0; i < elementCount; i++)
+            {
+                sb.AppendLine();
+                sb.Append("|  ");
+                for (int j = 0; j < colCount; j++)
+                {
+                    sb.Append(table[i, j].PadLeft(colMaxLength[j]));
+                    sb.Append("  | ");
+                }
+            }
+
+            return sb.ToString();
+        }
+
 
 
     }

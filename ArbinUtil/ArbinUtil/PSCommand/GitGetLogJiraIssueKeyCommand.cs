@@ -61,6 +61,7 @@ namespace ArbinUtil.PSCommand
 
         private void LoadBranch(PowerShell powershell)
         {
+            WriteVerbose($"Check Version: {ReferenceVersion}, Is Normal Version: {ReferenceVersion.IsNormalVersion}");
             m_defaultBranch = GitUtil.GetDefaultBranch(powershell);
             if (string.IsNullOrEmpty(m_defaultBranch))
                 return;
@@ -81,6 +82,7 @@ namespace ArbinUtil.PSCommand
                 return;
 
             StopCommit = GitUtil.GetBaseCommit(powershell, m_defaultBranch, prevBranch);
+            WriteVerbose($"Prev Version: {findVersion}, StopCommit {StopCommit}");
         }
 
         private void BuildSearchIssueKeyPreifxs()
@@ -199,6 +201,11 @@ namespace ArbinUtil.PSCommand
                 }
                 break;
                 }
+
+                if(m_stopParse)
+                {
+                    PSCmdlet.WriteVerbose($"Stop Parse: {text}");
+                }
             }
         }
 
@@ -216,14 +223,14 @@ namespace ArbinUtil.PSCommand
                     string branch = GitUtil.GetCurrentBranch(powershell);
                     CurrentBranchIsMaster = branch.Equals(m_defaultBranch, StringComparison.OrdinalIgnoreCase);
                     var view = new GetJiraIssueKeyLogMessageView(this);
-                    view.ParseLogByPowerShell(powershell, SearchCommitCount);
+                    view.ParseLogByPowerShell(this, powershell, SearchCommitCount);
 
                     var result = m_searchAllKeys.Select(x => new JiraIssueKeys() { Name = x.Key, Numbers = x.Value.ToArray() }).ToArray();
                     WriteObject(result);
                 }
-
                 runspace.Close();
             }
+
 
 
         }

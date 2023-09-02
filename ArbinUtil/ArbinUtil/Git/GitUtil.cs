@@ -71,18 +71,16 @@ namespace ArbinUtil.Git
 
         public static IEnumerable<ArbinVersion> FindAllVersions(PowerShell powerShell, string filter = "")
         {
-            powerShell.Commands.Clear();
+            string script;
             if (!string.IsNullOrEmpty(filter))
             {
-                powerShell.AddScript($"git tag -l {filter}");
+                script = $"git tag -l {filter}";
             }
             else
             {
-                powerShell.AddScript("git tag");
+                script = "git tag";
             }
-
-            var result = powerShell.Invoke();
-            powerShell.Commands.Clear();
+            var result = powerShell.ExecOneScript(script);
             foreach (var item in result)
             {
                 if (!ArbinVersion.Parse(item.ToString(), out ArbinVersion temp))
@@ -93,10 +91,7 @@ namespace ArbinUtil.Git
 
         public static string GetCurrentBranch(PowerShell powerShell)
         {
-            powerShell.Commands.Clear();
-            powerShell.AddScript($"git branch --show-current");
-            var result = powerShell.Invoke();
-            powerShell.Commands.Clear();
+            var result = powerShell.ExecOneScript("git branch --show-current");
             if (result.Count == 0)
                 return "";
             return result[0].ToString().Trim();
@@ -123,21 +118,15 @@ namespace ArbinUtil.Git
 
         public static string GetDefaultBranch(PowerShell powerShell)
         {
-            powerShell.Commands.Clear();
-            powerShell.AddScript("git symbolic-ref --short refs/remotes/origin/HEAD");
-            var result = powerShell.Invoke();
-            powerShell.Commands.Clear();
+            var result = powerShell.ExecOneScript("git symbolic-ref --short refs/remotes/origin/HEAD");
             if (result.Count == 0)
                 return "";
             return result[0].ToString().Replace("origin/", "").Trim(TrimSpaces);
         }
 
-        public static string GetBranch(PowerShell powershell, ArbinVersion findVersion)
+        public static string GetBranch(PowerShell powerShell, ArbinVersion findVersion)
         {
-            powershell.Commands.Clear();
-            powershell.AddScript($"git branch --contains tags/{findVersion}");
-            var result = powershell.Invoke();
-            powershell.Commands.Clear();
+            var result = powerShell.ExecOneScript($"git branch --contains tags/{findVersion}");
             if (result.Count == 0)
                 return "";
             return result[0].ToString().Replace("origin/", "").Trim(TrimSpaces);

@@ -154,6 +154,37 @@ function need-upload {
     return -not ([string]::IsNullOrEmpty($suffix))
 }
 
+function set-EmptyJiraKey {
+    param (
+        [object] $csvText,
+        [string] $projName,
+        [ArbinUtil.ArbinVersion] $version
+    )
+
+    $oldPath = resolve-path ./    
+    cd EmptyJiraKey
+
+    git config --global user.email "arbin-test@arbin.com"
+    git config --global user.name "arbin-test"
+
+    git pull origin main --rebase
+    
+    $relativePrefix = $projName + '/' + [ArbinUtil.Util]::GetRelativePathPrefix($version)
+    $file = "$relativePrefix/$($version.ToString($false)).csv"
+    if (!(Test-Path $file)) { New-Item -Path $file -Force }
+
+    Set-Content -path $file -value $csvText -Encoding utf8BOM
+
+    $notChanged = git status | Select-String -Pattern 'working tree clean' -Quiet
+    if ($notChanged -ne $true) {
+        git add .
+        git commit -m "🤖#auto"
+        git pull origin main --rebase
+        git push origin main --force
+    }
+
+    cd $oldPath
+}
 
 function set-ProjectUrl {
     param (
@@ -162,6 +193,8 @@ function set-ProjectUrl {
         [string] $relativePrefix,
         [string] $tag
     )
+
+    git pull origin main --rebase
 
     $versionPath = "$relativePrefix/$fileNameNotExt.md"
     if ((Test-Path $versionPath)) {
@@ -187,7 +220,7 @@ function set-ProjectUrl {
     git add .
     git commit -m "🤖#auto, commitID $commitID"
     git pull origin main --rebase
-    git push origin main    
+    git push origin main --force    
 }
 
 function github-upload-new-otehrs {

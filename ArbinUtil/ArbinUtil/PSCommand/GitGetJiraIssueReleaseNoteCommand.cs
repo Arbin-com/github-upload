@@ -22,9 +22,11 @@ using System.IO;
 using System.Linq;
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
@@ -34,6 +36,11 @@ namespace ArbinUtil.PSCommand
     [OutputType(typeof(string))]
     public class GitGetJiraIssueReleaseNoteCommand : PSCmdlet
     {
+        private const string LabelName = "labels";
+        private const string AssignName = "assignee";
+        private const string TitleName = "summary";
+
+
         private string m_auth;
         private string m_releaseNoteID;
         private string m_jiraFields;
@@ -48,66 +55,142 @@ namespace ArbinUtil.PSCommand
         public string JiraHostURL { get; set; }
 
         [Parameter(Mandatory = true)]
+        [AllowEmptyCollection]
         public JiraIssueKeys[] JiraIssueKeys { get; set; }
 
-        private class JiraLikeMessage
+        public class JiraLikeMessage
         {
             public string Key { get; set; }
+            public string SolveUserName { get; set; } = "";
             public string ReleaseNote { get; set; }
-            public string[] Labels { get; set; }
+            public string Title { get; set; } = "";
+            public string[] Labels { get; set; } = Array.Empty<string>();
         }
 
-        private async Task<IEnumerable<JiraLikeMessage>> SolveJiraIssueFields()
+        public class SolveJiraResult
         {
-            ConcurrentBag<JiraLikeMessage> result = new ConcurrentBag<JiraLikeMessage>();
+            public JiraLikeMessage[] Messages { get; set; } = Array.Empty<JiraLikeMessage>();
+            public string[] ErrorSearchs { get; set; } = Array.Empty<string>();
+
+            public string ShowAllErrorSearch()
+            {
+                return string.Join("\n", ErrorSearchs);
+            }
+        }
+
+        private async Task GetKeyContent(string search, ConcurrentBag<JiraLikeMessage> result, ConcurrentBag<string> errorSearchs, ConcurrentBag<string> errorExpTexts)
+        {
+            var jsonObject = (await JiraUtil.GetJiraIssueRange(JiraHostURL, m_auth, search, m_jiraFields)).AsObject();
+            if (!jsonObject.TryGetPropertyValue("issues", out JsonNode issuesNode) || issuesNode == null)
+            {
+                errorSearchs.Add(search);
+                errorExpTexts.Add("not get issues: \n" + jsonObject.ToString());
+                return;
+            }
+
+            if (jsonObject.TryGetPropertyValue("warningMessages", out JsonNode warnNode) && warnNode != null)
+            {
+                errorExpTexts.Add($"warnMessage get issues {search}:\n" + warnNode.ToString());
+            }
+
+            var issues = issuesNode.AsArray();
+            foreach (var issue in issues)
+            {
+                var fields = issue["fields"].AsObject();
+                string jiraKey = issue["key"].GetValue<string>();
+                JiraLikeMessage message = new JiraLikeMessage
+                {
+                    Key = jiraKey
+                };
+
+                if (fields.TryGetPropertyValue(TitleName, out JsonNode titleNode) && titleNode != null)
+                {
+                    message.Title = titleNode.ToString();
+                }
+
+                if (fields.TryGetPropertyValue(AssignName, out JsonNode assignNode) && assignNode != null)
+                {
+                    message.SolveUserName = assignNode["displayName"].GetValue<string>();
+                }
+
+                if (fields.TryGetPropertyValue(LabelName, out JsonNode nodeLabel) && nodeLabel != null)
+                {
+                    string[] labels = nodeLabel.AsArray().Select(x => x.GetValue<string>()).ToArray();
+                    message.Labels = labels;
+                }
+
+                if (fields.TryGetPropertyValue(m_releaseNoteID, out JsonNode node) && node != null)
+                {
+                    string releaseNote = node.GetValue<string>()?.Trim();
+                    message.ReleaseNote = releaseNote;
+                }
+                result.Add(message);
+            }
+        }
+
+        private SolveJiraResult SolveJiraIssueFields()
+        {
+            ConcurrentBag<JiraLikeMessage> store = new ConcurrentBag<JiraLikeMessage>();
+            ConcurrentBag<string> errorSearchs = new ConcurrentBag<string>();
+            ConcurrentBag<string> errorExpTexts = new ConcurrentBag<string>();
 
             var options = new ExecutionDataflowBlockOptions
             {
-                MaxDegreeOfParallelism = 32,
-                BoundedCapacity = 64
+                MaxDegreeOfParallelism = 16
             };
 
-            var block = new ActionBlock<JiraUtil.JiraIssueRange>(async (input) =>
+            int MaxTryCount = 3;
+
+            var block = new ActionBlock<string>(async (input) =>
             {
-                try
+                int tryCounter = 0;
+                SortedDictionary<string, JiraLikeMessage> nullTextKeys = new SortedDictionary<string, JiraLikeMessage>();
+                while (true)
                 {
-                    var jsonObject = (await JiraUtil.GetJiraIssueRange(JiraHostURL, m_auth, input.FromKey, input.ToKey, m_jiraFields)).AsObject();
-                    var issues = jsonObject["issues"].AsArray();
-                    foreach (var issue in issues)
+                    try
                     {
-                        var fields = issue["fields"].AsObject();
-                        if (!fields.TryGetPropertyValue(m_releaseNoteID, out JsonNode? node))
-                            continue;
-                        string jiraKey = issue["key"].GetValue<string>();
-                        string releaseNote = node?.GetValue<string>();
-                        if (string.IsNullOrWhiteSpace(releaseNote))
-                            continue;
-                        if (!fields.TryGetPropertyValue("labels", out node))
-                            continue;
-                        JiraLikeMessage message = new JiraLikeMessage();
-                        message.ReleaseNote = releaseNote;
-                        message.Key = jiraKey;
-                        string[] labels = null;
-                        if(node != null)
-                            labels = node.AsArray().Select(x => x.GetValue<string>()).ToArray();
-                        message.Labels = labels == null ? Array.Empty<string>() : labels;
-                        result.Add(message);
+                        await GetKeyContent(input, store, errorSearchs, errorExpTexts);
                     }
-                }
-                catch (Exception e)
-                {
-                    
+                    catch (Exception ex)
+                    {
+                        if(tryCounter++ >= MaxTryCount)
+                        {
+                            errorSearchs.Add(input);
+                            errorExpTexts.Add(ex.ToString());
+                            break;
+                        }
+                        Thread.Sleep(2 * 1000);
+                        continue;
+                    }
+                    break;
                 }
             }, options);
 
-            foreach (var range in JiraUtil.GetJiraIssueKeyRange(JiraIssueKeys))
+            const int BatchCount = 120;
+            foreach (var range in JiraUtil.GetJiraBatchKeyRange(JiraUtil.GetJiraIssueKeyRange(JiraIssueKeys), BatchCount))
             {
-                await block.SendAsync(range);
+                if (!block.Post(range))
+                {
+                    WriteVerbose($"Post Range error: {range}");
+
+                }
             }
 
             block.Complete();
-            await block.Completion;
+            block.Completion.Wait();
 
+            if (errorExpTexts.Count > 0)
+            {
+                WriteVerbose("\n\nfind jira Exception:");
+                foreach (var errorText in errorExpTexts)
+                {
+                    WriteVerbose(errorText);
+                }
+            }
+
+            var result = new SolveJiraResult();
+            result.Messages = store.ToArray();
+            result.ErrorSearchs = errorSearchs.ToArray();
             return result;
         }
 
@@ -125,12 +208,18 @@ namespace ArbinUtil.PSCommand
             if (string.IsNullOrEmpty(m_releaseNoteID))
                 return false;
 
-            m_jiraFields = string.Join(',', m_releaseNoteID, "labels");
+            m_jiraFields = string.Join(',', m_releaseNoteID, LabelName, AssignName, TitleName);
             return true;
         }
 
         protected override void ProcessRecord()
         {
+            if(JiraIssueKeys == null || JiraIssueKeys.Length == 0)
+            {
+                WriteObject(new SolveJiraResult());
+                return;
+            }
+
             m_auth = JiraUtil.CreateJiraAuthorization(UserName, APIToken);
             using (Runspace runspace = RunspaceFactory.CreateRunspace())
             {
@@ -141,7 +230,7 @@ namespace ArbinUtil.PSCommand
                     powershell.Runspace = runspace;
                     if (!LoadJiraFields())
                         return;
-                    var messages = SolveJiraIssueFields().Result;
+                    var messages = SolveJiraIssueFields();
                     WriteObject(messages);
                 }
 

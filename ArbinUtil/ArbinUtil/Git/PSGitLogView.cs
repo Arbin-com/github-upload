@@ -14,6 +14,8 @@ namespace ArbinUtil.Git
         const string Message = "#_ms_";
         const string End = "#_end_";
 
+        public PSCmdlet PSCmdlet { get; set; }
+
         protected override void Parse(IEnumerable<string> lines)
         {
             foreach (var line in lines)
@@ -50,8 +52,9 @@ namespace ArbinUtil.Git
             }
         }
 
-        public void ParseLogByPowerShell(PowerShell powershell, int searchCommitCount)
+        public void ParseLogByPowerShell(PSCmdlet cmdlet, PowerShell powershell, int searchCommitCount)
         {
+            PSCmdlet = cmdlet;
             powershell.Commands.Clear();
             string logCmd = $"git log --pretty=\"{Commit}%n%h%n{Branch}%n%d%n{Message}%n%B%n{End}\"";
             if(searchCommitCount > 0)

@@ -263,10 +263,10 @@ namespace ArbinUtil.PSCommand
                     string branch = GitUtil.GetCurrentBranch(powershell);
                     CurrentBranchIsMaster = branch.Equals(m_defaultBranch, StringComparison.OrdinalIgnoreCase);
                     var view = new GetCustomLogMessageView(this);
-                    view.ParseLogByPowerShell(powershell, SearchCommitCount);
+                    view.ParseLogByPowerShell(this, powershell, SearchCommitCount);
                     Output(m_buildData.BuildMessage);
                 }
-
+                
                 runspace.Close();
             }
 
