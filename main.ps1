@@ -23,6 +23,12 @@ function set-PiplineAutoVersion {
         [string] $codeVersion
     )
 
+    $hsaForwarded = git status | Select-String -Pattern 'behind.*can.*fast-forwarded' -Quiet
+    if ($hsaForwarded -eq $true) {
+        Write-Output "already has new commit"
+        return
+    }
+
     Write-Host "code version: $codeVersion"
     $prevVersion = Get-GitPrevVersion
     $currentSetVersion = $null
