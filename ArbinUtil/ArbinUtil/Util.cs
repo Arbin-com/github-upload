@@ -10,6 +10,7 @@
 * ==============================================================================
 */
 
+using ArbinUtil.Git;
 using ArbinUtil.Jira;
 using System;
 using System.Collections.Generic;
@@ -95,6 +96,17 @@ namespace ArbinUtil
                     return -1;
             }
             return 0;
+        }
+
+        public static ArbinVersion StableOrPathTryFindPrevVersion(PowerShell powerShell, ArbinVersion version)
+        {
+            bool isstableVersion = version.IsStableVersion || version.IsPatchVersion;
+            if (!isstableVersion)
+                return null;
+            ArbinVersion tryFindLessVersion = (ArbinVersion)version.Clone();
+            tryFindLessVersion.Suffix = ArbinVersion.StableVersionSuffix;
+            ArbinVersion findVersion = GitUtil.GetPrevVersion(powerShell, tryFindLessVersion);
+            return findVersion;
         }
 
         public static IEnumerable<Memory<char>> Split(Memory<char> src, char separator)

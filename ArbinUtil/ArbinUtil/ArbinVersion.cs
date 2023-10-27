@@ -23,8 +23,8 @@ namespace ArbinUtil
         private const char SuffixSeparator = '-';
         private const char PathSeparator = '/';
         private const string AnyNumberText = "*";
-        private const string PatchVersionSuffix = "Patch";
-        private const string StableVersionSuffix = PatchVersionSuffix;
+        private const string PatchVersionSuffix = "patch";
+        public const string StableVersionSuffix = "release";
         public const StringComparison TextComparision = StringComparison.OrdinalIgnoreCase;
         public static StringComparer TextCompar => StringComparer.OrdinalIgnoreCase;
 

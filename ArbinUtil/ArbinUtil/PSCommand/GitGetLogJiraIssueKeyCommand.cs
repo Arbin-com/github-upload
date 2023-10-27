@@ -65,15 +65,10 @@ namespace ArbinUtil.PSCommand
             m_defaultBranch = GitUtil.GetDefaultBranch(powershell);
             if (string.IsNullOrEmpty(m_defaultBranch))
                 return;
-
             if (!string.IsNullOrEmpty(StopCommit))
                 return;
 
-            bool isstableVersion = ReferenceVersion.IsStableVersion;
-            if (!isstableVersion)
-                return;
-
-            ArbinVersion findVersion = GitUtil.GetPrevVersion(powershell, ReferenceVersion);
+            var findVersion = Util.StableOrPathTryFindPrevVersion(powershell, ReferenceVersion);
             if (findVersion == null)
                 return;
 
