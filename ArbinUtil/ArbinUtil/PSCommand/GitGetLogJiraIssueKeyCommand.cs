@@ -58,6 +58,7 @@ namespace ArbinUtil.PSCommand
         private string m_defaultBranch = "";
         private StringFind m_search;
         private Dictionary<string, SortedSet<uint>> m_searchAllKeys = new Dictionary<string, SortedSet<uint>>();
+        private bool m_isStableOrPatch;
 
         private void LoadBranch(PowerShell powershell)
         {
@@ -179,8 +180,10 @@ namespace ArbinUtil.PSCommand
                 break;
                 case TextSection.Branch:
                 {
-                    if(GitUtil.CheckBranchTextNeedStop(text, Cmd.ReferenceVersion, Cmd.IgnoreEqualPathPrefix))
+                    var result = GitUtil.CheckBranchTextNeedStop(text, Cmd.ReferenceVersion, Cmd.m_isStableOrPatch, Cmd.IgnoreEqualPathPrefix);
+                    if (result.Item1)
                     {
+                        Cmd.WriteVerbose($"Check Commit Need Stop: {result.Item2}");
                         m_stopParse = true;
                     }
                 }
@@ -213,6 +216,7 @@ namespace ArbinUtil.PSCommand
                 using (PowerShell powershell = PowerShell.Create())
                 {
                     powershell.Runspace = runspace;
+                    m_isStableOrPatch = ReferenceVersion.IsPatchVersion || ReferenceVersion.IsStableVersion;
                     LoadBranch(powershell);
                     BuildSearchIssueKeyPreifxs();
                     string branch = GitUtil.GetCurrentBranch(powershell);

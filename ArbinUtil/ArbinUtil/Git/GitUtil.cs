@@ -142,14 +142,10 @@ namespace ArbinUtil.Git
             return result[0].ToString().Trim();
         }
 
-        public static bool CheckBranchTextNeedStop(string line, ArbinVersion referenceVersion, bool ignoreEqualPathPrefix)
+        public static (bool, string) CheckBranchTextNeedStop(string line, ArbinVersion referenceVersion, bool isStableOrPatch, bool ignoreEqualPathPrefix)
         {
             string tagText = "tag: ";
             bool isNormalVersion = referenceVersion.IsNormalVersion;
-            if (line.IndexOf(referenceVersion.ToString(false, false)) != -1)
-            {
-                return false;
-            }
 
             foreach (string block in line.Split(','))
             {
@@ -169,23 +165,35 @@ namespace ArbinUtil.Git
                     continue;
                 if (findTag)
                 {
-                    if (!arbinVersion.SameSuffix(referenceVersion.Suffix))
-                        continue;
-                    if (!ignoreEqualPathPrefix && !arbinVersion.SamePathPrefix(referenceVersion.PathPrefix))
-                        continue;
-                    if (isNormalVersion)
+                    if(isStableOrPatch)
                     {
-                        if (arbinVersion.Build != 0)
+                        if(!arbinVersion.IsPatchVersion && !arbinVersion.IsStableVersion)
+                            continue;
+                        if (Util.MaxMajorMinorBuild(arbinVersion, referenceVersion) >= 0)
                             continue;
                     }
-                    return true;
+                    else
+                    {
+                        if (!arbinVersion.SameSuffix(referenceVersion.Suffix))
+                            continue;
+                        if (!ignoreEqualPathPrefix && !arbinVersion.SamePathPrefix(referenceVersion.PathPrefix))
+                            continue;
+                        if (Util.MaxMajorMinorBuild(arbinVersion, referenceVersion) >= 0)
+                            continue;
+                        if (isNormalVersion)
+                        {
+                            if (arbinVersion.Build != 0)
+                                continue;
+                        }
+                    }
+                    return (true, version);
                 }
                 else
                 {
 
                 }
             }
-            return false;
+            return (false, "");
         }
 
 

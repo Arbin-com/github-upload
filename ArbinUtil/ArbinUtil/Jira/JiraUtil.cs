@@ -24,6 +24,7 @@ using static ArbinUtil.PSCommand.GitGetJiraIssueReleaseNoteCommand;
 using System.Linq;
 using ArbinUtil.EnumHelp.Attributes;
 using ArbinUtil.EnumHelp;
+using static ArbinUtil.Util;
 
 namespace ArbinUtil.Jira
 {
@@ -34,19 +35,6 @@ namespace ArbinUtil.Jira
         public const string UILabel = "UI";
 
         private static string[][] JiraLabelElements = new string[(int)LikeLabelName.MaxCount][] ;
-
-        public enum LikeLabelName
-        {
-            None = -1,
-            [EnumDescription(Desc = NewFeatureLabel)]
-            NewFeatures,
-            [EnumDescription(Desc = UILabel)]
-            UI,
-            [EnumDescription(Desc = FixLabel)]
-            Fix,
-            MaxCount
-        }
-
 
         public struct JiraIssueRange
         {
@@ -267,28 +255,6 @@ namespace ArbinUtil.Jira
             }
         }
 
-        private static LikeLabelName GetLikeJiraLabel(string label)
-        {
-            switch (label.ToLower())
-            {
-            case "newfeatures":
-            case "newfeature":
-            case "new feature":
-            case "new features":
-            return LikeLabelName.NewFeatures;
-
-            case "fix":
-            case "bug":
-            return LikeLabelName.Fix;
-
-            case "ui":
-            return LikeLabelName.UI;
-
-            default:
-            return LikeLabelName.None;
-            }
-        }
-
         public static JiraIssueKeys[] Union(IEnumerable<JiraIssueKeys[]> source)
         {
             Dictionary<string, SortedSet<uint>> result = new Dictionary<string, SortedSet<uint>>();
@@ -320,7 +286,7 @@ namespace ArbinUtil.Jira
             return value1.CompareTo(value2);
         }
 
-        public static JiraLikeMessage[] ApplySortJiraLikeMessageAndChangeData(IEnumerable<JiraLikeMessage> source)
+        public static List<JiraLikeMessage>[] LikeLabelGroupApplySortJiraLikeMessage(IEnumerable<JiraLikeMessage> source)
         {
             var likeLabels = EnumUtil.GetDescriptions<LikeLabelName>();
             List<JiraLikeMessage>[] groupMessage = new List<JiraLikeMessage>[likeLabels.Count];
@@ -332,32 +298,32 @@ namespace ArbinUtil.Jira
 
             foreach (var message in source)
             {
-                bool has = false;
                 LikeLabelName likeLabelName = LikeLabelName.Fix;
-                foreach(var label in message.Labels)
+                foreach (var label in message.Labels)
                 {
-                    likeLabelName = GetLikeJiraLabel(label);
-                    if (likeLabelName != LikeLabelName.None)
+                    var tempLabel = GetLikeLabel(label);
+                    if (tempLabel != LikeLabelName.None)
                     {
-                        has = true;
+                        likeLabelName = tempLabel;
                         break;
                     }
-                }
-                if(!has)
-                {
-                    likeLabelName = LikeLabelName.Fix;
                 }
                 message.Labels = JiraLabelElements[(int)likeLabelName];
                 groupMessage[(int)likeLabelName].Add(message);
             }
 
-            foreach(var group in groupMessage)
+            foreach (var group in groupMessage)
             {
                 group.Sort((x, y) => JiraKeyComp(x.Key, y.Key));
             }
+            return groupMessage;
+        }
 
+        public static JiraLikeMessage[] ApplySortJiraLikeMessageAndChangeData(IEnumerable<JiraLikeMessage> source)
+        {
+            var temp = LikeLabelGroupApplySortJiraLikeMessage(source);
             List<JiraLikeMessage> result = new List<JiraLikeMessage>();
-            groupMessage.Aggregate(result, (cur, value) =>
+            temp.Aggregate(result, (cur, value) =>
             {
                 cur.AddRange(value);
                 return cur;
@@ -374,7 +340,7 @@ namespace ArbinUtil.Jira
             public string AssignName { get; set; }
             public string URL => JiraUtil.GetKeyURL(m_hostURL, Key);
             public string ReleaseNote { get; set; }
-            public string Label { get; set; }
+            public string Category { get; set; }
 
             public JiraKeyLineShowWe(JiraLikeMessage message, string hostURL)
             {
@@ -382,7 +348,7 @@ namespace ArbinUtil.Jira
                 Key = message.Key;
                 AssignName = message.SolveUserName;
                 ReleaseNote = message.ReleaseNote;
-                Label = string.Join(", ", message.Labels); 
+                Category = string.Join(", ", message.Labels); 
                 m_hostURL = hostURL;
             }
         }
@@ -391,13 +357,13 @@ namespace ArbinUtil.Jira
         {
             public string Key { get; set; }
             public string ReleaseNote { get; set; }
-            public string Label { get; set; }
+            public string Category { get; set; }
 
             public JiraKeyLineShowUser(JiraLikeMessage message)
             {
                 Key = message.Key;
                 ReleaseNote = message.ReleaseNote;
-                Label = string.Join(", ", message.Labels);
+                Category = string.Join(", ", message.Labels);
             }
         }
 

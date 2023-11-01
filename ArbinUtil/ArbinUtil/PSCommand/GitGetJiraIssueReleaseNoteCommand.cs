@@ -34,7 +34,7 @@ namespace ArbinUtil.PSCommand
 {
     [Cmdlet(VerbsCommon.Get, "GitGetJiraIssueReleaseNote")]
     [OutputType(typeof(string))]
-    public class GitGetJiraIssueReleaseNoteCommand : PSCmdlet
+    public partial class GitGetJiraIssueReleaseNoteCommand : PSCmdlet
     {
         private const string LabelName = "labels";
         private const string AssignName = "assignee";
@@ -57,15 +57,6 @@ namespace ArbinUtil.PSCommand
         [Parameter(Mandatory = true)]
         [AllowEmptyCollection]
         public JiraIssueKeys[] JiraIssueKeys { get; set; }
-
-        public class JiraLikeMessage
-        {
-            public string Key { get; set; }
-            public string SolveUserName { get; set; } = "";
-            public string ReleaseNote { get; set; }
-            public string Title { get; set; } = "";
-            public string[] Labels { get; set; } = Array.Empty<string>();
-        }
 
         public class SolveJiraResult
         {

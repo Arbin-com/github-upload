@@ -10,6 +10,7 @@
 * ==============================================================================
 */
 
+using ArbinUtil.EnumHelp.Attributes;
 using ArbinUtil.Git;
 using ArbinUtil.Jira;
 using System;
@@ -21,6 +22,7 @@ using System.Management.Automation;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -33,6 +35,48 @@ namespace ArbinUtil
 {
     public static class Util
     {
+        public const string BugfixName = "Bug fixes";
+        public const string NewFeatureName = "New Features";
+        public const string StyleName = "UI Improvements";
+
+        public enum LikeLabelName
+        {
+            None = -1,
+            [EnumDescription(Desc = NewFeatureName)]
+            NewFeatures,
+            [EnumDescription(Desc = BugfixName)]
+            Fix,
+            [EnumDescription(Desc = StyleName)]
+            UI,
+            MaxCount
+        }
+
+        public static LikeLabelName GetLikeLabel(string label)
+        {
+            switch (label.ToLower())
+            {
+            case "newfeatures":
+            case "newfeature":
+            case "new feature":
+            case "new features":
+            //case NewFeatureName:
+            return LikeLabelName.NewFeatures;
+
+            case "bug":
+            case "fix":
+            case "bug fixes":
+            //case BugfixName:
+            return LikeLabelName.Fix;
+
+            case "ui":
+            case "style":
+            //case StyleName:
+            return LikeLabelName.UI;
+
+            default:
+            return LikeLabelName.None;
+            }
+        }
 
         public static bool IsOpenVerbose(this PSCmdlet cmdlet)
         {
@@ -72,7 +116,7 @@ namespace ArbinUtil
             return 0;
         }
 
-        private static int MaxMajorMinorBuild(ArbinVersion x, ArbinVersion y)
+        public static int MaxMajorMinorBuild(ArbinVersion x, ArbinVersion y)
         {
             if (x.Major != ArbinVersion.AnyNumber && y.Major != ArbinVersion.AnyNumber)
             {
@@ -100,12 +144,13 @@ namespace ArbinUtil
 
         public static ArbinVersion StableOrPathTryFindPrevVersion(PowerShell powerShell, ArbinVersion version)
         {
-            bool isstableVersion = version.IsStableVersion || version.IsPatchVersion;
-            if (!isstableVersion)
-                return null;
             ArbinVersion tryFindLessVersion = (ArbinVersion)version.Clone();
-            tryFindLessVersion.Suffix = ArbinVersion.StableVersionSuffix;
+            tryFindLessVersion.Suffix = ArbinVersion.PatchVersionSuffix;
             ArbinVersion findVersion = GitUtil.GetPrevVersion(powerShell, tryFindLessVersion);
+            if (findVersion != null)
+                return findVersion;
+            tryFindLessVersion.Suffix = ArbinVersion.StableVersionSuffix;
+            findVersion = GitUtil.GetPrevVersion(powerShell, tryFindLessVersion);
             return findVersion;
         }
 

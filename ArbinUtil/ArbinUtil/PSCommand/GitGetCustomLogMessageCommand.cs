@@ -11,6 +11,7 @@
 */
 
 using ArbinUtil.Algorithm;
+using ArbinUtil.EnumHelp;
 using ArbinUtil.Git;
 using System;
 using System.Collections.Generic;
@@ -20,6 +21,7 @@ using System.Management.Automation;
 using System.Management.Automation.Runspaces;
 using System.Text;
 using System.Text.RegularExpressions;
+using static ArbinUtil.Util;
 
 namespace ArbinUtil.PSCommand
 {
@@ -28,10 +30,6 @@ namespace ArbinUtil.PSCommand
     public class GitGetCustomLogMessageCommand : PSCmdlet
     {
         private static Regex RegexReporter = new Regex("(?i)(?<=\\(+.*)[,\\s]*Reporter:.*(?=\\))");
-
-        const string BugfixName = "Bug fix";
-        const string NewFeatureName = "New features";
-        const string StyleName = "Style";
 
         const string MessageTypePrefix = "--";
 
@@ -52,6 +50,7 @@ namespace ArbinUtil.PSCommand
 
         public bool CurrentBranchIsMaster { get; set; } = false;
 
+        private bool m_isStableOrPatch = false;
         private string m_defaultBranch = "";
         private BuildData m_buildData = new BuildData();
         private FixedSizeSlidingSet<string> m_checkCommitDesc = new FixedSizeSlidingSet<string>(1000);
@@ -66,27 +65,19 @@ namespace ArbinUtil.PSCommand
 
         private string GetGoodMessgeTypeName(string text)
         {
-            switch (text.ToLower())
-            {
-                case "newfeature":
-                case "newfeatures":
-                    return NewFeatureName;
-
-                case "fix":
-                case "bug":
-                case "hotfix":
-                    return BugfixName;
-
-                case "ui":
-                case "style":
-                    return StyleName;
-            }
-            return text;
+            var label = Util.GetLikeLabel(text);
+            return label == Util.LikeLabelName.None ? text : label.GetDescription();    
         }
 
         bool ExecBranch(string line)
         {
-            return !GitUtil.CheckBranchTextNeedStop(line, ReferenceVersion, IgnoreEqualPathPrefix);
+            var result = GitUtil.CheckBranchTextNeedStop(line, ReferenceVersion, m_isStableOrPatch, IgnoreEqualPathPrefix);
+            if(result.Item1)
+            {
+                WriteVerbose($"Check Commit Need Stop: {result.Item2}");
+            }
+
+            return !result.Item1;
         }
 
         private bool CheckFilterMessage(string message)
@@ -174,9 +165,9 @@ namespace ArbinUtil.PSCommand
             if (buildMessages.Build.Count == 0)
                 return;
             StringBuilder sb = new StringBuilder(buildMessages.Build.Count * 4096);
-            Append(sb, buildMessages, BugfixName);
-            Append(sb, buildMessages, NewFeatureName);
-            Append(sb, buildMessages, StyleName);
+            Append(sb, buildMessages, Util.BugfixName);
+            Append(sb, buildMessages, Util.NewFeatureName);
+            Append(sb, buildMessages, Util.StyleName);
             foreach (var item in buildMessages.Build)
             {
                 Append(sb, item.Key, item.Value);
@@ -254,6 +245,7 @@ namespace ArbinUtil.PSCommand
                 runspace.SessionStateProxy.Path.SetLocation(SessionState.Path.CurrentFileSystemLocation.Path);
                 using (PowerShell powershell = PowerShell.Create())
                 {
+                    m_isStableOrPatch = ReferenceVersion.IsPatchVersion || ReferenceVersion.IsStableVersion;
                     powershell.Runspace = runspace;
                     LoadBranch(powershell);
                     string branch = GitUtil.GetCurrentBranch(powershell);
