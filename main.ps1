@@ -189,6 +189,11 @@ function set-EmptyJiraKey {
         git push origin main --force
     }
 
+    if ($version.IsPatchVersion -and ![string]::IsNullOrWhiteSpace($csvText)) {
+        $showURL = (git config --get remote.origin.url) -replace '(?<=//).*@', ''
+        throw "Patch Version requires a release note: $showURL/tree/main/$file"
+    }
+
     cd $oldPath
 }
 

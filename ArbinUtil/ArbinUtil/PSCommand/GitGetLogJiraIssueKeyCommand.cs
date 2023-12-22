@@ -64,16 +64,19 @@ namespace ArbinUtil.PSCommand
         {
             WriteVerbose($"Check Version: {ReferenceVersion}, Is Normal Version: {ReferenceVersion.IsNormalVersion}");
             m_defaultBranch = GitUtil.GetDefaultBranch(powershell);
+            WriteVerbose($"Default Branch: '{m_defaultBranch}'");
             if (string.IsNullOrEmpty(m_defaultBranch))
                 return;
             if (!string.IsNullOrEmpty(StopCommit))
                 return;
 
             var findVersion = Util.StableOrPathTryFindPrevVersion(powershell, ReferenceVersion);
+            WriteVerbose($"Find Old Version: '{findVersion}'");
             if (findVersion == null)
                 return;
 
             string prevBranch = GitUtil.GetBranch(powershell, findVersion);
+            WriteVerbose($"Find Prev Branch: '{prevBranch}'");
             if (string.IsNullOrEmpty(prevBranch))
                 return;
 

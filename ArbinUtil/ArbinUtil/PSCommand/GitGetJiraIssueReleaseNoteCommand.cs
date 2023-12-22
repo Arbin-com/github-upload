@@ -157,7 +157,7 @@ namespace ArbinUtil.PSCommand
                 }
             }, options);
 
-            const int BatchCount = 120;
+            const int BatchCount = 85;
             foreach (var range in JiraUtil.GetJiraBatchKeyRange(JiraUtil.GetJiraIssueKeyRange(JiraIssueKeys), BatchCount))
             {
                 if (!block.Post(range))

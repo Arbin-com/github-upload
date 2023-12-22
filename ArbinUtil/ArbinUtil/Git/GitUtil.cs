@@ -118,18 +118,39 @@ namespace ArbinUtil.Git
 
         public static string GetDefaultBranch(PowerShell powerShell)
         {
-            var result = powerShell.ExecOneScript("git symbolic-ref --short refs/remotes/origin/HEAD");
+            //var result = powerShell.ExecOneScript("git symbolic-ref --short refs/remotes/origin/HEAD");
+            var result = powerShell.ExecOneScript("git rev-parse --abbrev-ref origin/HEAD");
             if (result.Count == 0)
-                return "";
+                return "master";
             return result[0].ToString().Replace("origin/", "").Trim(TrimSpaces);
+        }
+
+        private static string RemovePrefixBranchName(string branch)
+        {
+            if(string.IsNullOrEmpty(branch))
+                return branch;
+            branch = branch.Trim(TrimSpaces);
+            return branch;
+            //const string remote = "remotes/";
+            //if(branch.StartsWith(remote))
+            //{
+            //    branch = branch[remote.Length..];
+            //}
+            //const string origin = "origin/";
+            //if(branch.StartsWith(origin))
+            //{
+            //    branch = branch[origin.Length..];
+            //}
+            //return branch;
         }
 
         public static string GetBranch(PowerShell powerShell, ArbinVersion findVersion)
         {
-            var result = powerShell.ExecOneScript($"git branch --contains tags/{findVersion}");
+            var result = powerShell.ExecOneScript($"git branch -a --contains tags/{findVersion}");
             if (result.Count == 0)
                 return "";
-            return result[0].ToString().Replace("origin/", "").Trim(TrimSpaces);
+            string select = result[0].ToString();
+            return RemovePrefixBranchName(select);
         }
 
         public static string GetBaseCommit(PowerShell powershell, string branch1, string branch2)
