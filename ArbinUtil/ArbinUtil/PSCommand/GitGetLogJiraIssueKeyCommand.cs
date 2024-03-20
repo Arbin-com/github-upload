@@ -81,6 +81,11 @@ namespace ArbinUtil.PSCommand
                 return;
 
             StopCommit = GitUtil.GetBaseCommit(powershell, m_defaultBranch, prevBranch);
+            if(string.IsNullOrWhiteSpace(StopCommit))
+            {
+                StopCommit = GitUtil.GetCommitByTag(powershell, findVersion.ToString(false));
+            }
+
             WriteVerbose($"Prev Version: {findVersion}, StopCommit {StopCommit}");
         }
 
