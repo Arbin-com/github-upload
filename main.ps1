@@ -1,3 +1,5 @@
+using module .\classes.psm1
+#(Get-Module Classes).ImplementingAssembly.DefinedTypes
 
 
 Function set-MySerialize {
@@ -77,7 +79,7 @@ function dotnet-remove-other-file {
         [string] $binPath
     )
 
-    [string[]] $removePaths = @("de", "es", "ja", "ru", "tr", "fr", "hu", "it", "pt", "sk", "sv", "zh-tw", "zh-cn")
+    [string[]] $removePaths = @("de", "es", "ja", "ru", "tr", "fr", "hu", "it", "pt", "sk", "sv", "zh-tw", "zh-cn", "zh-Hant", "zh-Hans", "pt-BR", "pl", "ko", "cs")
     for ($j = 0; $j -lt ($removePaths.length); $j++) {
         $pathName = $removePaths[$j];
         $remotePath = "$binPath/$pathName"
@@ -202,26 +204,32 @@ function set-ProjectUrl {
         [string] $commitID,
         [string] $fileNameNotExt,
         [string] $relativePrefix,
-        [string] $tag
+        [string] $tag,
+        [string] $codeData
     )
 
     git pull origin main --rebase
 
-    $versionPath = "$relativePrefix/$fileNameNotExt.md"
+    $versionPath = [IO.Path]::Combine($relativePrefix, "$fileNameNotExt.md")
     if ((Test-Path $versionPath)) {
         Remove-Item -Path $versionPath -Force
     }
 
-    $codeData = @{CommitID = "$commitID"; } | ConvertTo-Json
-
     New-Item -Path $versionPath -Force
     Add-Content -Path $versionPath -Value "## URL"
-    Add-Content -Path $versionPath -Value "🔗https://github.com/$userAndRepo/releases/tag/$tag"
+    Add-Content -Path $versionPath -Value ("🔗https://github.com/$userAndRepo/releases/tag/" + ([System.Web.HttpUtility]::UrlEncode($tag)))
     Add-Content -Path $versionPath -Value "`n"
     Add-Content -Path $versionPath -Value "## Repository Information"
-    Add-Content -Path $versionPath -Value '```c'
-    Add-Content -Path $versionPath -Value $codeData
-    Add-Content -Path $versionPath -Value '```'
+
+    if ([string]::IsNullOrWhiteSpace($codeData)) {
+        $codeData = @{CommitID = "$commitID"; } | ConvertTo-Json
+        Add-Content -Path $versionPath -Value '```c'
+        Add-Content -Path $versionPath -Value $codeData
+        Add-Content -Path $versionPath -Value '```' 
+    }
+    else {
+        Add-Content -Path $versionPath -Value $codeData
+    }
 
     $notChanged = git status | Select-String -Pattern 'working tree clean' -Quiet
     if ($notChanged -eq $true) {
@@ -290,6 +298,7 @@ function github-upload-new-otehrs {
 }
 
 
+
 function github-upload-new {
     param (
         [string] $commitID,
@@ -300,8 +309,14 @@ function github-upload-new {
         [string] $token,
         [string] $existTagName,
         [string] $tagMessage,
-        [string] $wrapPathName
+        [string] $wrapPathName,
+        [string] $projectInforamtion,
+        [UploadModiftyNotify] $modiftyNotify
     )
+
+    if ($null -eq $modiftyNotify) {
+        $modiftyNotify = [UploadModiftyNotify]::New()
+    }
 
     $oldPath = resolve-path ./    
 
@@ -314,15 +329,24 @@ function github-upload-new {
         $branchFullName = $branchFullName.Replace('refs/heads/', '')
     }
     
-    $userAndRepo = $userAndRepo + "-" + $suffix
+    if (![string]::IsNullOrWhiteSpace($suffix)) {
+        $userAndRepo = $userAndRepo + "-" + $suffix
+    }
+
     $repoName = $userAndRepo.Split("/")[1]
 
     $partTags = $existTagName.Split("/")
-    $changedZipName = $zipPrefix + $partTags[$partTags.length - 1]
+    $changedZipName = $modiftyNotify.GetZipFile($zipPrefix, $branchFullName, $partTags)
+    $fileSuffix = $modiftyNotify.GetZipSuffix($changedZipName)
+
+    $fullFileName = $changedZipName
+    if (![string]::IsNullOrWhiteSpace($suffix)) {
+        $fullFileName = "$changedZipName.$fileSuffix"
+    }
 
     Remove-Item $changedZipName -Force -Recurse -ErrorAction SilentlyContinue
     rename-item "$wrapPathName" -newname "$changedZipName" -PassThru
-    $assetses = "$changedZipName.zip"
+    $assetses = "$fullFileName"
     Remove-Item $assetses -Force -ErrorAction SilentlyContinue
     Compress-Archive -Path $changedZipName -DestinationPath $assetses
 
@@ -338,11 +362,18 @@ function github-upload-new {
     git config --global user.name "arbin-test"
 
     $parseVersion = $null
+    $relativePrefix = $null
+    $fileNameNotExt = $null
     if ([ArbinUtil.ArbinVersion]::Parse($branchFullName, [ref] $parseVersion)) {
         $relativePrefix = [ArbinUtil.Util]::GetRelativePathPrefix($parseVersion)
-        set-ProjectUrl -tag $parseVersion -commitID $commitID -fileNameNotExt $parseVersion.ToString($false) -relativePrefix $relativePrefix
+        $fileNameNotExt = $parseVersion.ToString($false)
+    }
+    else {
+        $relativePrefix = ($modiftyNotify.GetProjectPrefixPath("", $partTags))
+        $fileNameNotExt = $partTags[$partTags.length - 1]
     }
 
+    set-ProjectUrl -tag $branchFullName -commitID $commitID -fileNameNotExt $fileNameNotExt -relativePrefix $relativePrefix -codeData $projectInforamtion
     node ../github-upload/main.js $srcBranch $userAndRepo $token $existTagName " $tagMessage " $assetses " $oldPath " " $tagSuffix "
 }
 

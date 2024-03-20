@@ -144,6 +144,15 @@ namespace ArbinUtil.Git
             //return branch;
         }
 
+        public static string GetCommitByTag(PowerShell powerShell, string tag)
+        {
+            var result = powerShell.ExecOneScript($"git rev-list -1 {tag}");
+            if(result.Count == 0)
+                return "";
+            string select = result[0].ToString();
+            return select;
+        }
+
         public static string GetBranch(PowerShell powerShell, ArbinVersion findVersion)
         {
             var result = powerShell.ExecOneScript($"git branch -a --contains tags/{findVersion}");
