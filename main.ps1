@@ -86,7 +86,7 @@ function dotnet-remove-other-file {
         Remove-Item $remotePath -Force -Recurse -ErrorAction SilentlyContinue
     }
     remove-item $binPath/DevExpress*.xml
-    remove-item $binPath/*.pdb
+    Remove-Item "$binPath/*" -Recurse -Include *.pdb
     remove-item $binPath/empty.txt -ErrorAction SilentlyContinue
 
     $tempItems = Get-ChildItem $binPath/*.dll -Recurse

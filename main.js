@@ -21,6 +21,11 @@ const execCommand = (cmd) => {
     });
 }
 
+
+const wait = (ms) => {
+    return new Promise(resolve => setTimeout(() => resolve(), ms));
+};
+
 const args = process.argv;
 let cmdOffset = 2;
 
@@ -36,6 +41,7 @@ const tagSuffix = args[7 + cmdOffset].trim();
 const octokit = new Octokit({
     auth: token
 })
+
 
 let mainTask = (async () => {
     arrUserAndRepo = userAndRepo.split('/');
@@ -147,25 +153,26 @@ let mainTask = (async () => {
 
     newReleaseResult = newReleaseResult.data
 
-
-
     const payloadUploadReleaseAsset = (id, dataName) => {
         let dataPath = dataName
         if (Boolean(assetsePath)) {
             dataPath = path.join(assetsePath, dataName)
         }
+        let dataSize = fs.statSync(dataPath).size
+        console.log(`before init upload asset ${dataPath}, Size:${dataSize}`)
         return {
+            headers: {
+                'content-type': 'application/zip',
+                'content-length': dataSize,
+            },
             owner: arrUserAndRepo[0],
             repo: arrUserAndRepo[1],
             release_id: id,
-            contentLength: fs.statSync(dataPath).size,
-            data: fs.readFileSync(dataPath),
+            data: fs.createReadStream(dataPath),
             name: dataName,
         }
     };
-
-
-
+    console.log("start upload asset")
 
     for (let i = 0; i < arrAssetsLen; i++) {
         let assetsName = arrAssets[i];
@@ -178,20 +185,34 @@ let mainTask = (async () => {
         //     console.log(reason)
         //     console.log("\n\n")
         // })
+        let tryCount = 3
+        while (true) {
+            let uploadSuccess = true
+            const uploadAsset = await octokit.rest.repos.uploadReleaseAsset(
+                payloadUploadReleaseAsset(newReleaseResult.id, assetsName)
+            ).catch((reason) => {
+                uploadSuccess = false
+                console.log(`upload assets ${assetsName} failed:`)
+                console.log(reason)
+                console.log("\n\n")
+            })
 
-        const uploadAsset = await octokit.rest.repos.uploadReleaseAsset(
-            payloadUploadReleaseAsset(newReleaseResult.id, assetsName)
-        ).catch((reason) => {
-            console.log(`upload assets ${assetsName} failed:`)
-            console.log(reason)
-            console.log("\n\n")
-        })
+            if (uploadAsset !== undefined) {
+                console.log(`upload assets ${assetsName}:\n`)
+                console.log(uploadAsset)
+                console.log("\n\n")
+            }
 
-        if (uploadAsset !== undefined) {
-            console.log(`upload assets ${assetsName}:\n`)
-            console.log(uploadAsset)
-            console.log("\n\n")
+            if (uploadSuccess == true) {
+                break;
+            }
+            --tryCount
+            if (tryCount <= 0) {
+                throw new Error(`upload assets ${assetsName} failed`);
+            }
+            await wait(10 * 1000);
         }
+
     }
 
 

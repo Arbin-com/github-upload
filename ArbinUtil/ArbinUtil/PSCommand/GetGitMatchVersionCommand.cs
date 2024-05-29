@@ -168,6 +168,7 @@ namespace ArbinUtil.PSCommand
             string filePath = GetPath(basePath);
             if (string.IsNullOrEmpty(filePath))
                 return result;
+            WriteVerbose($"try get file: {filePath}");
             result.CodeData = GetCodeData(filePath);
             string findVersion = Path.GetFileNameWithoutExtension(filePath);
             result.Version = findVersion;

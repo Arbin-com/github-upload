@@ -19,6 +19,8 @@ namespace ArbinUtilTest
             yield return new object[] { "1.2.3", new ArbinVersion { Major = 1, Minor = 2, Build = 3 } };
             yield return new object[] { "1.2.3-a", new ArbinVersion { Major = 1, Minor = 2, Build = 3, Suffix = "a" } };
             yield return new object[] { "1.2.3-a.1", new ArbinVersion { Major = 1, Minor = 2, Build = 3, Suffix = "a", SpecialNumber = 1 } };
+            yield return new object[] { "2.0.0+build.1848", new ArbinVersion { Major = 2, Minor = 0, Build = 0, Suffix = "build", SpecialNumber = 1848 } };
+            yield return new object[] { "2.0.0-build.1848", new ArbinVersion { Major = 2, Minor = 0, Build = 0, Suffix = "build", SpecialNumber = 1848 } };
             yield return new object[] { "*.*.*-a.*", new ArbinVersion { Major = anyNumber, Minor = anyNumber, Build = anyNumber, Suffix = "a", SpecialNumber = anyNumber } };
             yield return new object[] { "release/1.2.3-a.1", new ArbinVersion { Major = 1, Minor = 2, Build = 3, Suffix = "a", SpecialNumber = 1, PathPrefix = "release" } };
             yield return new object[] { "release/mitstest.1.2.3-a.1", new ArbinVersion { Products = "mitstest", Major = 1, Minor = 2, Build = 3, Suffix = "a", SpecialNumber = 1, PathPrefix = "release" } };
@@ -46,6 +48,9 @@ namespace ArbinUtilTest
         [DataRow("1.1.1-.")]
         [DataRow("1.1.1-.zz")]
         [DataRow("2a.1.1.1-.zz")]
+        [DataRow("/.")]
+        [DataRow("/")]
+        [DataRow("/1.2.3")]
         public void ParseVersionFalse(string version)
         {
             Assert.IsFalse(ArbinVersion.Parse(version, out ArbinVersion _));

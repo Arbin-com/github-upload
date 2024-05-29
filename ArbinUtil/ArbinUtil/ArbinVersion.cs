@@ -20,7 +20,7 @@ namespace ArbinUtil
     {
         public const uint AnyNumber = uint.MaxValue;
         private const char Separator = '.';
-        private const char SuffixSeparator = '-';
+        private const char DefaultSuffixSeparator = '-';
         private const char PathSeparator = '/';
         private const string AnyNumberText = "*";
         public const string PatchVersionSuffix = "patch";
@@ -50,11 +50,12 @@ namespace ArbinUtil
             get => m_suffix;
             set => m_suffix = value ?? "";
         }
+        public char SuffixSeparator { get; set; } = DefaultSuffixSeparator;
         public uint SpecialNumber { get; set; }
         public bool HasSuffix => !string.IsNullOrEmpty(Suffix);
         public bool HasPathPrefix => !string.IsNullOrEmpty(PathPrefix);
         public bool HasProducts => !string.IsNullOrEmpty(Products);
-        public bool IsPatchVersion => Suffix.Contains(PatchVersionSuffix, TextComparision);
+        public bool IsPatchVersion => PatchVersionSuffix.Equals(Suffix, StringComparison.OrdinalIgnoreCase);
         public bool IsStableVersion => StableVersionSuffix.Equals(Suffix, StringComparison.OrdinalIgnoreCase);
         public bool IsNormalVersion => !HasSuffix && SpecialNumber == 0;
 
@@ -74,7 +75,7 @@ namespace ArbinUtil
                 sb.Append(PathSeparator);
             }
 
-            if (appendProducts && HasProducts)
+            if(appendProducts && HasProducts)
             {
                 sb.Append(Products);
                 sb.Append(Separator);
@@ -88,14 +89,14 @@ namespace ArbinUtil
             sb.Append(tempText);
             sb.Append(Separator);
 
-            if (Minor == AnyNumber)
+            if(Minor == AnyNumber)
                 tempText = AnyNumberText;
             else
                 tempText = Minor.ToString();
             sb.Append(tempText);
             sb.Append(Separator);
 
-            if (Build == AnyNumber)
+            if(Build == AnyNumber)
                 tempText = AnyNumberText;
             else
                 tempText = Build.ToString();
@@ -109,7 +110,7 @@ namespace ArbinUtil
             if(SpecialNumber != 0)
             {
                 sb.Append(Separator);
-                if (SpecialNumber == AnyNumber)
+                if(SpecialNumber == AnyNumber)
                     tempText = AnyNumberText;
                 else
                     tempText = SpecialNumber.ToString();
@@ -138,139 +139,160 @@ namespace ArbinUtil
             return Products.Equals(products, TextComparision);
         }
 
+        //private bool int MatchNumber()
+        //{
+
+        //}
+
+        private static ReadOnlySpan<char> MatchNext(ref ReadOnlySpan<char> span, char ch)
+        {
+            int index = span.IndexOf(ch);
+            if(index < 0)
+                return ReadOnlySpan<char>.Empty;
+            var temp = span[..index];
+            span = span[(index + 1)..];
+            return temp;
+        }
+
         public static bool Parse(string version, out ArbinVersion result)
         {
             result = new ArbinVersion();
-            if (string.IsNullOrEmpty(version))
+            if(version == null)
                 return false;
-            string[] blocks = version.Split(Separator);
-            if (blocks.Length < 3 || blocks.Length > 5)
-                return false;
-
-            int nextIndex = 0;
-            string first = blocks[nextIndex];
-            int tempIndex = first.LastIndexOf(PathSeparator);
-            if (tempIndex == 0)
-                return false;
-            if (tempIndex > 0)
-            {
-                result.PathPrefix = first.Substring(0, tempIndex);
-                first = first.Substring(tempIndex + 1);
-            }
-            if (string.IsNullOrWhiteSpace(first))
+            var raw = version.AsSpan().Trim();
+            if(raw.IsEmpty)
                 return false;
 
-            string majorText;
-            if (char.IsLetter(first[0]))
+            int temp = raw.IndexOf('.');
+            if(temp < 0)
+                return false;
+
+            temp = raw[..temp].LastIndexOf(PathSeparator);
+            if(temp == 0)
+                return false;
+            if(temp > 0)
             {
-                result.Products = first;
-                ++nextIndex;
-                majorText = blocks[nextIndex];
+                result.PathPrefix = raw[..temp].ToString();
+                raw = raw[(temp + 1)..];
             }
-            else
+            if(raw.IsEmpty)
+                return false;
+
+            if(char.IsLetter(raw[0]))
             {
-                majorText = first;
+                result.Products = MatchNext(ref raw, Separator).ToString();
             }
 
-            int majorTextIndex = 0;
-            uint setMarjor;
-            uint temp;
-            var tempText = majorText.AsSpan().Slice(majorTextIndex);
-            if (tempText.Equals(AnyNumberText.AsSpan(), StringComparison.InvariantCulture))
+            uint setMarjor, setMinor, setBuild;
+
+            var block = MatchNext(ref raw, Separator);
+            if(block.IsEmpty)
+                return false;
+            if(block.Equals(AnyNumberText.AsSpan(), StringComparison.InvariantCulture))
             {
                 setMarjor = AnyNumber;
             }
             else
             {
-                if (!uint.TryParse(tempText, out setMarjor))
+                if(!uint.TryParse(block, out setMarjor))
                     return false;
             }
 
-            ++nextIndex;
-            if (blocks[nextIndex] == AnyNumberText)
+            block = MatchNext(ref raw, Separator);
+            if(block.IsEmpty)
+                return false;
+            if(block.Equals(AnyNumberText.AsSpan(), StringComparison.InvariantCulture))
             {
-                temp = AnyNumber;
+                setMinor = AnyNumber;
             }
             else
             {
-                if (!uint.TryParse(blocks[nextIndex], out temp))
+                if(!uint.TryParse(block, out setMinor))
                     return false;
+            }
+
+
+            if(raw.StartsWith(AnyNumberText))
+            {
+                setBuild = AnyNumber;
+                raw = raw[AnyNumberText.Length..];
+            }
+            else
+            {
+                temp = 0;
+                while(temp < raw.Length && char.IsDigit(raw[temp]))
+                    ++temp;
+                var tempText = raw[..temp];
+                if(!uint.TryParse(tempText, out setBuild))
+                    return false;
+                raw = raw[temp..];
             }
 
             result.Major = setMarjor;
-            result.Minor = temp;
+            result.Minor = setMinor;
+            result.Build = setBuild;
 
-            ++nextIndex;
-            if (nextIndex >= blocks.Length)
+            if(raw.IsEmpty)
+                return true;
+
+            temp = raw.LastIndexOf(Separator);
+            if(temp > 0)
+            {
+                uint setSpecialNumber;
+                var tempText = raw[(temp + 1)..];
+                bool ok = false;
+                if(tempText.Equals(AnyNumberText.AsSpan(), StringComparison.InvariantCulture))
+                {
+                    setSpecialNumber = AnyNumber;
+                    ok = true;
+                }
+                else if(uint.TryParse(raw[(temp + 1)..], out setSpecialNumber))
+                {
+                    ok = true;
+                }
+
+                if(ok)
+                {
+                    result.SpecialNumber = setSpecialNumber;
+                    raw = raw[..temp];
+                    if(raw.IsEmpty)
+                        return true;
+                }
+           }
+
+            char suffixSeparator = raw[0];
+            if(suffixSeparator != DefaultSuffixSeparator && suffixSeparator != '+' || raw.Length < 2)
                 return false;
-            string buildText = blocks[nextIndex];
-            if(buildText.StartsWith(AnyNumberText))
-            {
-                temp = AnyNumber;
-                tempIndex = AnyNumberText.Length;
-            }
-            else
-            {
-                tempIndex = 0;
-                while (tempIndex < buildText.Length && char.IsDigit(buildText[tempIndex]))
-                    ++tempIndex;
-                tempText = buildText.AsSpan().Slice(0, tempIndex);
-                if (!uint.TryParse(tempText, out temp))
-                    return false;
-            }
-
-            result.Build = temp;
-            if (tempIndex < buildText.Length)
-            {
-                if (buildText[tempIndex] != SuffixSeparator)
-                    return false;
-                ++tempIndex;
-                if (tempIndex >= buildText.Length)
-                    return false;
-                result.Suffix = buildText[tempIndex..];
-            }
-
-            ++nextIndex;
-            if (nextIndex < blocks.Length)
-            {
-                if (blocks[nextIndex] == AnyNumberText)
-                {
-                    temp = AnyNumber;
-                }
-                else
-                {
-                    if (!uint.TryParse(blocks[nextIndex], out temp))
-                        return false;
-                }
-                result.SpecialNumber = temp;
-                ++nextIndex;
-            }
-
-            return nextIndex == blocks.Length;
+            result.SuffixSeparator = suffixSeparator;
+            var suffix = raw[1..];
+            if(suffix[0] == Separator)
+                return false;
+            result.Suffix = suffix.ToString();
+            return true;
         }
 
         public static explicit operator ArbinVersion(string version)
         {
-            if (!Parse(version, out ArbinVersion result))
+            if(!Parse(version, out ArbinVersion result))
                 return new ArbinVersion();
             return result;
         }
 
         public int MaxMajorMinorBuild(ArbinVersion b)
         {
-            if (Major > b.Major)
+            if(Major > b.Major)
                 return 1;
-            else if (Major < b.Major)
+            else if(Major < b.Major)
                 return -1;
 
-            if (Minor > b.Minor)
+            if(Minor > b.Minor)
                 return 1;
-            else if (Minor < b.Minor)
+            else if(Minor < b.Minor)
                 return -1;
 
-            if (Build > b.Build)
+            if(Build > b.Build)
                 return 1;
-            else if (Build < b.Build)
+            else if(Build < b.Build)
                 return -1;
             return 0;
         }
