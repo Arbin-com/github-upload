@@ -46,7 +46,7 @@ const octokit = new Octokit({
 let mainTask = (async () => {
     arrUserAndRepo = userAndRepo.split('/');
     let reposPrefix = `/repos/${userAndRepo}/releases`;
-    let arrAssets = assetses.split(' ');
+    let arrAssets = assetses.split(';');
     let arrAssetsLen = arrAssets.length
     const assetMap = new Map();
     for (let i = 0; i < arrAssetsLen; i++) {
