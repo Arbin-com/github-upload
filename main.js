@@ -50,7 +50,9 @@ let mainTask = (async () => {
     let arrAssetsLen = arrAssets.length
     const assetMap = new Map();
     for (let i = 0; i < arrAssetsLen; i++) {
-        assetMap[arrAssets[i]] = "";
+        let fileName = arrAssets[i];
+        arrAssets[i] = { githubName: fileName.replace(" ", ""), fileName };
+        assetMap[arrAssets[i].githubName.toLowerCase()] = "";
     }
 
     let realTagName = existTagName + (tagSuffix === "" ? "" : `-${tagSuffix}`)
@@ -81,7 +83,9 @@ let mainTask = (async () => {
         console.log(`check delete assets length: ${oldArrAssetsLen}\n\n`)
         for (let i = 0; i < oldArrAssetsLen; i++) {
             let oldAssetsData = oldArrAssets[i]
-            if (!isHotfix && assetMap[oldAssetsData.name] !== "")
+
+            let notRemove = assetMap[oldAssetsData.name.toLowerCase()] !== "";
+            if (!isHotfix && notRemove)
                 continue;
 
             console.log(`delete assets ${oldAssetsData.name}`)
@@ -153,13 +157,13 @@ let mainTask = (async () => {
 
     newReleaseResult = newReleaseResult.data
 
-    const payloadUploadReleaseAsset = (id, dataName) => {
+    const payloadUploadReleaseAsset = (id, dataName, githubName) => {
         let dataPath = dataName
         if (Boolean(assetsePath)) {
             dataPath = path.join(assetsePath, dataName)
         }
         let dataSize = fs.statSync(dataPath).size
-        console.log(`before init upload asset ${dataPath}, Size:${dataSize}`)
+        console.log(`before init upload asset ${dataPath} githubName ${githubName}, Size:${dataSize}`)
         return {
             headers: {
                 'content-type': 'application/zip',
@@ -169,13 +173,13 @@ let mainTask = (async () => {
             repo: arrUserAndRepo[1],
             release_id: id,
             data: fs.createReadStream(dataPath),
-            name: dataName,
+            name: githubName,
         }
     };
     console.log("start upload asset")
 
     for (let i = 0; i < arrAssetsLen; i++) {
-        let assetsName = arrAssets[i];
+        let { fileName, githubName } = arrAssets[i];
         // let uploadAssets = await octokit.request('POST ' + reposPrefix + '{release_id}/assets{?name}', {
         //     release_id: newReleaseResult.id,
         //     data: '@' + assetsName,
@@ -189,16 +193,16 @@ let mainTask = (async () => {
         while (true) {
             let uploadSuccess = true
             const uploadAsset = await octokit.rest.repos.uploadReleaseAsset(
-                payloadUploadReleaseAsset(newReleaseResult.id, assetsName)
+                payloadUploadReleaseAsset(newReleaseResult.id, fileName, githubName)
             ).catch((reason) => {
                 uploadSuccess = false
-                console.log(`upload assets ${assetsName} failed:`)
+                console.log(`upload assets ${fileName} failed:`)
                 console.log(reason)
                 console.log("\n\n")
             })
 
             if (uploadAsset !== undefined) {
-                console.log(`upload assets ${assetsName}:\n`)
+                console.log(`upload assets ${fileName}:\n`)
                 console.log(uploadAsset)
                 console.log("\n\n")
             }
@@ -208,7 +212,7 @@ let mainTask = (async () => {
             }
             --tryCount
             if (tryCount <= 0) {
-                throw new Error(`upload assets ${assetsName} failed`);
+                throw new Error(`upload assets ${fileName} failed`);
             }
             await wait(10 * 1000);
         }
