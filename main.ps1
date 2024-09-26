@@ -217,7 +217,7 @@ function set-ProjectUrl {
 
     New-Item -Path $versionPath -Force
     Add-Content -Path $versionPath -Value "## URL"
-    Add-Content -Path $versionPath -Value ("🔗https://github.com/$userAndRepo/releases/tag/" + ([System.Web.HttpUtility]::UrlEncode($tag)))
+    Add-Content -Path $versionPath -Value ("🔗https://github.com/$userAndRepo/releases/tag/" + ([System.Web.HttpUtility]::UrlPathEncode($tag)))
     Add-Content -Path $versionPath -Value "`n"
     Add-Content -Path $versionPath -Value "## Repository Information"
 
