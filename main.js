@@ -51,7 +51,7 @@ let mainTask = (async () => {
     const assetMap = new Map();
     for (let i = 0; i < arrAssetsLen; i++) {
         let fileName = arrAssets[i];
-        arrAssets[i] = { githubName: fileName.replace(" ", ""), fileName };
+        arrAssets[i] = { githubName: fileName.trim().replace(' ', '.'), fileName };
         assetMap[arrAssets[i].githubName.toLowerCase()] = "";
     }
 
@@ -85,10 +85,10 @@ let mainTask = (async () => {
             let oldAssetsData = oldArrAssets[i]
 
             let notRemove = assetMap[oldAssetsData.name.toLowerCase()] !== "";
+            console.log(`delete asset ? ${!notRemove} '${oldAssetsData.name}'`)
             if (!isHotfix && notRemove)
                 continue;
 
-            console.log(`delete assets ${oldAssetsData.name}`)
             await octokit.rest.repos.deleteReleaseAsset({
                 owner: arrUserAndRepo[0],
                 repo: arrUserAndRepo[1],
