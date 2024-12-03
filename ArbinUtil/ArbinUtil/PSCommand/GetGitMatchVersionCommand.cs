@@ -30,7 +30,7 @@ namespace ArbinUtil.PSCommand
     public class GetGitMatchVersionCommand : PSCmdlet
     {
         [Parameter(Mandatory = true)]
-        public ArbinVersion ReferenceVersion { get; set; }
+        public string ReferenceVersion { get; set; }
         [Parameter(Mandatory = true)]
         public string Owner { get; set; }
         [Parameter(Mandatory = true)]
@@ -47,17 +47,20 @@ namespace ArbinUtil.PSCommand
         [Parameter(HelpMessage = "example: '{0}', 'prefix.{0}'")]
         public string TagFormat { get; set; } = "{0}";
 
+        private bool m_isArbinVersion = false;
+        private ArbinVersion m_referenceVersion;
+
         private List<uint> GetNumberPath(string basePath, uint value)
         {
             List<uint> result = new List<uint>();
             bool isAny = value == ArbinVersion.AnyNumber;
             var dirs = Directory.EnumerateDirectories(basePath);
 
-            if (isAny)
+            if(isAny)
             {
-                foreach (string dir in dirs)
+                foreach(string dir in dirs)
                 {
-                    if (!uint.TryParse(Path.GetFileName(dir), out uint dirNumber))
+                    if(!uint.TryParse(Path.GetFileName(dir), out uint dirNumber))
                         continue;
                     result.Add(dirNumber);
                 }
@@ -65,7 +68,7 @@ namespace ArbinUtil.PSCommand
             else
             {
                 string temp = Path.Combine(basePath, value.ToString());
-                if (Directory.Exists(temp))
+                if(Directory.Exists(temp))
                 {
                     result.Add(value);
                 }
@@ -76,15 +79,15 @@ namespace ArbinUtil.PSCommand
 
         private bool VersionMatch(ArbinVersion version)
         {
-            if (ReferenceVersion.Major != ArbinVersion.AnyNumber && ReferenceVersion.Major != version.Major)
+            if(m_referenceVersion.Major != ArbinVersion.AnyNumber && m_referenceVersion.Major != version.Major)
                 return false;
-            if (ReferenceVersion.Minor != ArbinVersion.AnyNumber && ReferenceVersion.Minor != version.Minor)
+            if(m_referenceVersion.Minor != ArbinVersion.AnyNumber && m_referenceVersion.Minor != version.Minor)
                 return false;
-            if (ReferenceVersion.Build != ArbinVersion.AnyNumber && ReferenceVersion.Build != version.Build)
+            if(m_referenceVersion.Build != ArbinVersion.AnyNumber && m_referenceVersion.Build != version.Build)
                 return false;
-            if (!ReferenceVersion.SameSuffix(version.Suffix))
+            if(!m_referenceVersion.SameSuffix(version.Suffix))
                 return false;
-            if (ReferenceVersion.SpecialNumber != ArbinVersion.AnyNumber && ReferenceVersion.SpecialNumber != version.SpecialNumber)
+            if(m_referenceVersion.SpecialNumber != ArbinVersion.AnyNumber && m_referenceVersion.SpecialNumber != version.SpecialNumber)
                 return false;
             return true;
         }
@@ -93,14 +96,14 @@ namespace ArbinUtil.PSCommand
         {
             ArbinVersion find = null;
             string path = "";
-            foreach (var file in Directory.EnumerateFileSystemEntries(basePath))
+            foreach(var file in Directory.EnumerateFileSystemEntries(basePath))
             {
                 string fileName = Path.GetFileNameWithoutExtension(file);
-                if (!ArbinVersion.Parse(fileName, out ArbinVersion temp))
+                if(!ArbinVersion.Parse(fileName, out ArbinVersion temp))
                     continue;
-                if (!VersionMatch(temp))
+                if(!VersionMatch(temp))
                     continue;
-                if (find == null || Util.AzurePiplineGoodVersionCompareTo(temp, find) >= 0)
+                if(find == null || Util.AzurePiplineGoodVersionCompareTo(temp, find) >= 0)
                 {
                     find = temp;
                     path = file;
@@ -111,31 +114,31 @@ namespace ArbinUtil.PSCommand
 
         private string GetPath(string basePath)
         {
-            var nexts = GetNumberPath(basePath, ReferenceVersion.Major);
+            var nexts = GetNumberPath(basePath, m_referenceVersion.Major);
             foreach(var major in nexts)
             {
                 string path = Path.Combine(basePath, major.ToString());
-                var minors = GetNumberPath(path, ReferenceVersion.Minor);
+                var minors = GetNumberPath(path, m_referenceVersion.Minor);
                 foreach(var minor in minors)
                 {
                     string filePath = Path.Combine(path, minor.ToString());
                     string fullFilePath = GetMatchVersionFileName(filePath);
-                    if (!string.IsNullOrEmpty(fullFilePath))
+                    if(!string.IsNullOrEmpty(fullFilePath))
                         return fullFilePath;
                 }
             }
-            return "";
-       }
+            return basePath;
+        }
 
         private CodeData GetCodeData(string filePath)
         {
             CodeData result = new CodeData();
             string text = File.ReadAllText(filePath);
             Match match = new Regex(@"(?<=```c)([\s\S]*)(?=```)", RegexOptions.Multiline).Match(text);
-            if (!match.Success || match.Groups.Count <= 0)
+            if(!match.Success || match.Groups.Count <= 0)
                 return result;
             string jsonText = match.Groups[0].Value;
-            if (string.IsNullOrWhiteSpace(jsonText))
+            if(string.IsNullOrWhiteSpace(jsonText))
                 return result;
             result = JsonSerializer.Deserialize<CodeData>(jsonText);
             return result;
@@ -145,15 +148,15 @@ namespace ArbinUtil.PSCommand
         {
             const int MaxCount = 3;
             int counter = 0;
-            while (true)
+            while(true)
             {
                 try
                 {
                     return DoWorkCore();
                 }
-                catch (Exception e)
+                catch(Exception e)
                 {
-                    if (counter++ > MaxCount)
+                    if(counter++ > MaxCount)
                         throw e;
                     WriteDebug(e.ToString());
                 }
@@ -165,8 +168,16 @@ namespace ArbinUtil.PSCommand
         {
             MatchVersion result = new MatchVersion();
             string basePath = Path.Combine(SessionState.Path.CurrentFileSystemLocation.Path, RelativePath);
-            string filePath = GetPath(basePath);
-            if (string.IsNullOrEmpty(filePath))
+            string filePath = basePath;
+            if(m_isArbinVersion)
+            {
+                filePath = GetPath(basePath);
+            }
+            else
+            {
+                filePath = Path.Combine(basePath, ReferenceVersion + ".md");
+            }
+            if(string.IsNullOrEmpty(filePath))
                 return result;
             WriteVerbose($"try get file: {filePath}");
             result.CodeData = GetCodeData(filePath);
@@ -174,10 +185,10 @@ namespace ArbinUtil.PSCommand
             result.Version = findVersion;
             string tag = string.Format(TagFormat, findVersion);
             var releaseResult = GitUtil.GetReleaseByTag(Owner, Repo, Token, tag);
-            if (!releaseResult.TryGetPropertyValue("assets", out JsonNode node) || !(node is JsonArray arr))
+            if(!releaseResult.TryGetPropertyValue("assets", out JsonNode node) || !(node is JsonArray arr))
                 return result;
             List<string> storePaths = new List<string>();
-            foreach (var assets in arr)
+            foreach(var assets in arr)
             {
                 string url = assets["browser_download_url"].GetValue<string>();
                 string id = assets["id"].ToString();
@@ -195,11 +206,12 @@ namespace ArbinUtil.PSCommand
             List<ArbinVersion> prevs = new List<ArbinVersion>();
             GitCommitVersion commitVersion = new GitCommitVersion();
             commitVersion.Previous = prevs;
-            using (Runspace runspace = RunspaceFactory.CreateRunspace())
+            using(Runspace runspace = RunspaceFactory.CreateRunspace())
             {
                 runspace.Open();
+                m_isArbinVersion = ArbinVersion.Parse(ReferenceVersion, out m_referenceVersion);
                 runspace.SessionStateProxy.Path.SetLocation(SessionState.Path.CurrentFileSystemLocation.Path);
-                using (PowerShell powershell = PowerShell.Create())
+                using(PowerShell powershell = PowerShell.Create())
                 {
                     powershell.Runspace = runspace;
                     var result = DoWork();

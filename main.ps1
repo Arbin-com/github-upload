@@ -85,8 +85,8 @@ function dotnet-remove-other-file {
         $remotePath = "$binPath/$pathName"
         Remove-Item $remotePath -Force -Recurse -ErrorAction SilentlyContinue
     }
-    remove-item $binPath/DevExpress*.xml
-    Remove-Item "$binPath/*" -Recurse -Include *.pdb
+    remove-item $binPath/DevExpress*.xml -ErrorAction SilentlyContinue
+    Remove-Item "$binPath/*" -Recurse -Include *.pdb -ErrorAction SilentlyContinue
     remove-item $binPath/empty.txt -ErrorAction SilentlyContinue
 
     $tempItems = Get-ChildItem $binPath/*.dll -Recurse
@@ -212,7 +212,7 @@ function set-ProjectUrl {
 
     $versionPath = [IO.Path]::Combine($relativePrefix, "$fileNameNotExt.md")
     if ((Test-Path $versionPath)) {
-        Remove-Item -Path $versionPath -Force
+        Remove-Item -Path $versionPath -Force -ErrorAction SilentlyContinue
     }
 
     New-Item -Path $versionPath -Force
