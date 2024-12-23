@@ -158,7 +158,7 @@ namespace ArbinUtil.PSCommand
                 {
                     if(counter++ > MaxCount)
                         throw e;
-                    WriteDebug(e.ToString());
+                    WriteVerbose(e.ToString());
                 }
                 Thread.Sleep(30 * 1000);
             }
@@ -169,6 +169,7 @@ namespace ArbinUtil.PSCommand
             MatchVersion result = new MatchVersion();
             string basePath = Path.Combine(SessionState.Path.CurrentFileSystemLocation.Path, RelativePath);
             string filePath = basePath;
+            string tag = null;
             if(m_isArbinVersion)
             {
                 filePath = GetPath(basePath);
@@ -176,6 +177,7 @@ namespace ArbinUtil.PSCommand
             else
             {
                 filePath = Path.Combine(basePath, ReferenceVersion + ".md");
+                tag = ReferenceVersion;
             }
             if(string.IsNullOrEmpty(filePath))
                 return result;
@@ -183,7 +185,11 @@ namespace ArbinUtil.PSCommand
             result.CodeData = GetCodeData(filePath);
             string findVersion = Path.GetFileNameWithoutExtension(filePath);
             result.Version = findVersion;
-            string tag = string.Format(TagFormat, findVersion);
+            if(string.IsNullOrEmpty(tag))
+            {
+                tag = string.Format(TagFormat, findVersion);
+            }
+            WriteVerbose($"GetReleaseByTag: '{tag}'");
             var releaseResult = GitUtil.GetReleaseByTag(Owner, Repo, Token, tag);
             if(!releaseResult.TryGetPropertyValue("assets", out JsonNode node) || !(node is JsonArray arr))
                 return result;
