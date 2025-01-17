@@ -100,6 +100,11 @@ namespace ArbinUtil.PSCommand
             StringFind.StringFindBuilder builder = new StringFind.StringFindBuilder();
             foreach(var prefix in JiraIssueKeyPrefixs)
             {
+                if(prefix.Equals("TS", StringComparison.OrdinalIgnoreCase))
+                {
+                   continue;
+                }
+            
                 builder.AddString($"{prefix.ToUpper()}-");
             }
             m_search = builder.Build();
